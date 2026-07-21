@@ -1,0 +1,6 @@
+node_modules
+coverage
+output
+data
+cache
+package-lock.json

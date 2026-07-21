@@ -1,0 +1,25 @@
+# Logrotate — app + PM2 logs (Nginx uses /etc/logrotate.d/nginx by default)
+#
+# Install:
+#   sudo cp deploy/logrotate/movies-server /etc/logrotate.d/movies-server
+
+/opt/movies-server/logs/*.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su movies movies
+}
+
+/home/movies/.pm2/logs/*.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}
