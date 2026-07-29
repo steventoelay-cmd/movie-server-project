@@ -88,12 +88,11 @@ class CatalogScrapeService {
       siteId,
     });
 
-    return { items, siteId, pageReports };
+    return { items, siteId, pageReports, batches };
   }
 
   /**
    * Flat Myanmar search list (same item shape as Home).
-   * @returns {Promise<{ items: Array, siteId: string, pageReports: Array }>}
    */
   async scrapeMyanmar() {
     const siteId = this.siteForSection(SECTIONS.MYANMAR);
@@ -112,7 +111,7 @@ class CatalogScrapeService {
       siteId,
     });
 
-    return { items, siteId, pageReports };
+    return { items, siteId, pageReports, batches };
   }
 
   /**
@@ -143,6 +142,9 @@ class CatalogScrapeService {
     const childReports = [];
     const parentConcurrency = performanceConfig.parentConcurrency;
 
+    /** @type {Map<string, Array<Array>>} raw child items per scrape page */
+    const childrenPageBatchesByParentId = new Map();
+
     await mapLimit(parents, parentConcurrency, async (parent) => {
       const childBatches = [];
       for (let page = 1; page <= pipelineConfig.maxChildPages; page++) {
@@ -170,6 +172,8 @@ class CatalogScrapeService {
         }
       }
 
+      childrenPageBatchesByParentId.set(parent.id, childBatches);
+
       const children = this.processor.processBatches(childBatches, {
         section: `${section}:children`,
         siteId,
@@ -182,7 +186,9 @@ class CatalogScrapeService {
     return {
       siteId,
       parents,
+      parentBatches: batches,
       childrenByParentId,
+      childrenPageBatchesByParentId,
       pageReports,
       childReports,
     };

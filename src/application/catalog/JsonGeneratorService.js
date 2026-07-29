@@ -42,13 +42,18 @@ function chunkItems(items, pageSize) {
  * Build versioned JSON document for Flutter CDN.
  * Extra future fields can be added under meta without breaking clients.
  */
-function buildDocument({ section, page, items, extraMeta = {}, hasNext = false }) {
+function buildDocument({ section, page, items, extraMeta = {}, hasNext = false, itemsShape = 'default' }) {
   const generatedAt = new Date().toISOString();
-  const stableItems = items.map((item) => ({
-    title: item.title,
-    img: item.img,
-    url: item.url,
-  }));
+  const stableItems = items.map((item) => {
+    if (itemsShape === 'titleUrl') {
+      return { title: item.title, url: item.url };
+    }
+    return {
+      title: item.title,
+      img: item.img || '',
+      url: item.url,
+    };
+  });
 
   const contentVersion = hashPayload(sanitizeForCompare({ items: stableItems })).slice(0, 16);
 
@@ -232,12 +237,65 @@ class JsonGeneratorService {
   }
 
   /**
+   * One GitHub JSON file per scraped website page (page-1..N align with scrape pages).
+   * @param {string} section
+   * @param {Array<Array<{title,img,url}>>} pageItemLists
+   */
+  async generateFlatListFromBatches(section, pageItemLists) {
+    const folder = this.sectionFolder(section);
+    await ensureDir(path.join(this.outputDir, folder));
+    const batches = pageItemLists || [];
+    const files = [];
+    const keep = new Set();
+    let written = 0;
+    let totalItems = 0;
+
+    for (let i = 0; i < batches.length; i++) {
+      const items = batches[i] || [];
+      totalItems += items.length;
+      const page = i + 1;
+      const relPaths = catalogWritePaths({ section, page, parentIndex: false });
+      const doc = buildDocument({
+        section,
+        page,
+        items,
+        hasNext: i < batches.length - 1 && (batches[i + 1]?.length || 0) > 0,
+        extraMeta: { kind: 'list' },
+      });
+      const result = await this.writeDocPaths(relPaths, doc);
+      if (result.written) {
+        written += 1;
+      }
+      for (const rel of relPaths) {
+        files.push(rel);
+        keep.add(rel);
+      }
+    }
+
+    await this.pruneSection(section, keep);
+
+    logger.info('Generated flat list JSON (per scrape page)', {
+      section,
+      folder,
+      files: files.length,
+      written,
+      totalItems,
+      scrapePages: batches.length,
+    });
+
+    return { files, totalItems, pages: batches.length, written };
+  }
+
+  /**
    * Generate models|channels|tags tree.
    * @param {'model'|'channel'|'tag'} section
    * @param {Array<{title,img,url,id?:string}>} parents
    * @param {Map<string, Array<{title,img,url}>>|Object} childrenByParentId
+   * @param {object} [options]
+   * @param {Array<Array<object>>} [options.parentListPages]
+   * @param {Map<string, Array<Array<object>>>} [options.childrenPagesByParentId]
    */
-  async generateParentChild(section, parents, childrenByParentId) {
+  async generateParentChild(section, parents, childrenByParentId, options = {}) {
     const folder = this.sectionFolder(section);
     await ensureDir(path.join(this.outputDir, folder));
 
@@ -246,7 +304,12 @@ class JsonGeneratorService {
     let written = 0;
     let childTotal = 0;
 
-    const parentItems = parents.map((p) => ({ title: p.title, img: p.img, url: p.url }));
+    const parentItems = parents.map((p) =>
+      section === SECTIONS.TAG
+        ? { title: p.title, url: p.url }
+        : { title: p.title, img: p.img, url: p.url },
+    );
+    const parentItemsShape = section === SECTIONS.TAG ? 'titleUrl' : 'default';
     const useV2ParentPages = catalogConfig.layout === 'v2';
     const parentPages = useV2ParentPages ? chunkItems(parentItems, this.pageSize) : [parentItems];
 
@@ -257,6 +320,7 @@ class JsonGeneratorService {
         page,
         items: parentPages[pi],
         hasNext: useV2ParentPages ? pi < parentPages.length - 1 : false,
+        itemsShape: parentItemsShape,
         extraMeta: { kind: useV2ParentPages ? 'parent-list' : 'index', parentCount: parents.length },
       });
 
@@ -287,12 +351,79 @@ class JsonGeneratorService {
       }
     }
 
+    const parentListPages = options.parentListPages || [];
+    for (let i = 0; i < parentListPages.length; i++) {
+      const page = i + 1;
+      const pageItems = parentListPages[i] || [];
+      if (!pageItems.length) {
+        continue;
+      }
+      const doc = buildDocument({
+        section,
+        page,
+        items: pageItems,
+        hasNext:
+          i < parentListPages.length - 1 && (parentListPages[i + 1]?.length || 0) > 0,
+        itemsShape: parentItemsShape,
+        extraMeta: { kind: 'parent-list', parentCount: pageItems.length },
+      });
+      const relPaths = catalogWritePaths({ section, page, parentIndex: false });
+      const result = await this.writeDocPaths(relPaths, doc);
+      if (result.written) {
+        written += 1;
+      }
+      for (const rel of relPaths) {
+        files.push(rel);
+        keep.add(rel);
+      }
+    }
+
+    const childrenPagesByParentId = options.childrenPagesByParentId;
+
     for (const parent of parents) {
       const parentId = parent.id;
       const children = childrenByParentId.get
         ? childrenByParentId.get(parentId) || []
         : childrenByParentId[parentId] || [];
       childTotal += children.length;
+
+      const perScrapePages = childrenPagesByParentId?.get
+        ? childrenPagesByParentId.get(parentId)
+        : null;
+
+      if (perScrapePages && perScrapePages.length) {
+        for (let i = 0; i < perScrapePages.length; i++) {
+          const items = perScrapePages[i] || [];
+          if (!items.length) {
+            continue;
+          }
+          const page = i + 1;
+          const relPaths = catalogWritePaths({ section, page, parentId });
+          const doc = buildDocument({
+            section,
+            page,
+            items,
+            hasNext:
+              i < perScrapePages.length - 1 && (perScrapePages[i + 1]?.length || 0) > 0,
+            extraMeta: {
+              kind: 'children',
+              parentId,
+              parentTitle: parent.title,
+              parentUrl: parent.url,
+            },
+          });
+          const result = await this.writeDocPaths(relPaths, doc);
+          if (result.written) {
+            written += 1;
+          }
+          for (const rel of relPaths) {
+            files.push(rel);
+            keep.add(rel);
+          }
+        }
+        continue;
+      }
+
       const pages = chunkItems(children, this.pageSize);
 
       for (let i = 0; i < pages.length; i++) {

@@ -132,6 +132,30 @@ class ScraperEngine {
       };
     } catch (error) {
       const durationMs = Date.now() - started;
+      // No further child pages (404 / missing page).
+      const httpStatus = error.meta?.status;
+      if (error.code === 'FETCH_FAILED' && httpStatus === 404) {
+        this.logger.info('Children scrape empty (404)', {
+          siteId,
+          section,
+          parentUrl,
+          url,
+          page,
+          durationMs,
+        });
+        return {
+          siteId,
+          section,
+          kind: 'children',
+          parentUrl,
+          page,
+          url,
+          items: [],
+          totalItems: 0,
+          durationMs,
+          error: null,
+        };
+      }
       this.logger.error('Children scrape failed', {
         siteId,
         section,

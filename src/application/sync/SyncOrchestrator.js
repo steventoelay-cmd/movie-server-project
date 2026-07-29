@@ -270,7 +270,16 @@ class SyncOrchestrator {
 
     if (section === SECTIONS.HOME) {
       const scraped = await this.scrapeService.scrapeHome();
-      const generated = await this.generator.generateHome(scraped.items);
+      const processedBatches = scraped.batches.map((batch) =>
+        this.scrapeService.processor.processItems(batch, {
+          section: SECTIONS.HOME,
+          siteId: scraped.siteId,
+        }),
+      );
+      const generated = await this.generator.generateFlatListFromBatches(
+        SECTIONS.HOME,
+        processedBatches,
+      );
       return {
         skipped: false,
         siteId: scraped.siteId,
@@ -294,10 +303,35 @@ class SyncOrchestrator {
 
     if (isParentChildSection(section)) {
       const scraped = await this.scrapeService.scrapeParentChild(section);
+      const parentListPages = (scraped.parentBatches || []).map((batch) => {
+        const items = this.scrapeService.processor.processItems(batch, {
+          section,
+          siteId: scraped.siteId,
+        });
+        return items.map((p) =>
+          section === SECTIONS.TAG
+            ? { title: p.title, url: p.url }
+            : { title: p.title, img: p.img, url: p.url },
+        );
+      });
+      const childrenPagesByParentId = new Map();
+      for (const parent of scraped.parents) {
+        const rawPages = scraped.childrenPageBatchesByParentId?.get(parent.id) || [];
+        childrenPagesByParentId.set(
+          parent.id,
+          rawPages.map((batch) =>
+            this.scrapeService.processor.processItems(batch, {
+              section: `${section}:children`,
+              siteId: scraped.siteId,
+            }),
+          ),
+        );
+      }
       const generated = await this.generator.generateParentChild(
         section,
         scraped.parents,
         scraped.childrenByParentId,
+        { parentListPages, childrenPagesByParentId },
       );
       return {
         skipped: false,

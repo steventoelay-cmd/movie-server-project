@@ -55,6 +55,32 @@ const searchPagination = {
   pageOffset: -1,
 };
 
+/**
+ * Channel index links to profile slugs (/javhd) which show related channels, not videos.
+ * Video lists live at /?u={slug} with search-style pagination.
+ * @param {string} parentUrl
+ * @returns {string}
+ */
+function channelChildrenBaseUrl(parentUrl) {
+  try {
+    const u = new URL(parentUrl);
+    if (u.searchParams.has('u') || u.searchParams.get('type') === 'channel') {
+      return parentUrl;
+    }
+    const segment = u.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)[0];
+    if (!segment) {
+      return parentUrl;
+    }
+    const reserved = new Set(['tags', 'channels', 'amateurs', 'models', 'profiles', 'video']);
+    if (reserved.has(segment.toLowerCase())) {
+      return parentUrl;
+    }
+    return `${u.origin}/?u=${encodeURIComponent(segment)}`;
+  } catch {
+    return parentUrl;
+  }
+}
+
 module.exports = {
   siteId: 'xvideos',
   headers: {
@@ -123,10 +149,11 @@ module.exports = {
       selectors: videoThumbSelectors,
       attributes: videoThumbAttributes,
       pagination: {
-        ...pathPagination,
-        childrenType: 'path',
-        childrenPattern: '/{page}',
+        ...searchPagination,
+        childrenType: 'query',
+        childrenPattern: 'p={page}',
       },
+      resolveChildrenBaseUrl: channelChildrenBaseUrl,
     },
     [SECTIONS.TAG]: {
       selectors: videoThumbSelectors,

@@ -80,6 +80,33 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
     }
   });
 
+  test('tag parent index omits img (title + url only)', async () => {
+    const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'jest-json-tag-'));
+    try {
+      const generator = new JsonGeneratorService({
+        outputDir: tmp,
+        pageSize: 10,
+        skipUnchanged: false,
+      });
+      const parent = {
+        title: 'amateur',
+        img: 'https://ex.com/should-not-appear.jpg',
+        url: 'https://www.xvideos.com/tags/amateur',
+        id: parentIdFromItem({ url: 'https://www.xvideos.com/tags/amateur', title: 'amateur' }),
+      };
+      const children = new Map([[parent.id, makeItems(1, 'https://ex.com/v')]]);
+      await generator.generateParentChild('tag', [parent], children);
+      const index = JSON.parse(await fsp.readFile(path.join(tmp, 'tags', 'index.json'), 'utf8'));
+      expect(index.items[0]).toEqual({
+        title: 'amateur',
+        url: 'https://www.xvideos.com/tags/amateur',
+      });
+      expect(index.items[0]).not.toHaveProperty('img');
+    } finally {
+      await removeDir(tmp);
+    }
+  });
+
   test('generateParentChild writes index + children pages', async () => {
     const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'jest-json-pc-'));
     try {

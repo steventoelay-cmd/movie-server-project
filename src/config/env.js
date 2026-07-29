@@ -104,7 +104,7 @@ const env = Object.freeze({
   }),
   scheduler: Object.freeze({
     enabled: boolEnv('SCHEDULER_ENABLED', true),
-    cron: process.env.SCHEDULER_CRON || '0 */8 * * *',
+    cron: process.env.SCHEDULER_CRON || '0 */12 * * *',
     timezone: process.env.SCHEDULER_TZ || 'UTC',
   }),
   github: Object.freeze({

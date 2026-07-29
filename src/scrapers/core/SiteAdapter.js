@@ -216,7 +216,11 @@ class SelectorSiteAdapter extends SiteAdapter {
     const parentConfig = this.sectionConfigs[section] || {};
     const childConfig = this.childrenConfigs[section] || {};
     const pagination = childConfig.pagination || parentConfig.pagination || {};
-    return buildChildrenPaginatedUrl(parentUrl, page, pagination);
+    let baseUrl = parentUrl;
+    if (typeof childConfig.resolveChildrenBaseUrl === 'function') {
+      baseUrl = childConfig.resolveChildrenBaseUrl(parentUrl) || parentUrl;
+    }
+    return buildChildrenPaginatedUrl(baseUrl, page, pagination);
   }
 
   _parseWithConfig(html, pageUrl, listConfig, section) {

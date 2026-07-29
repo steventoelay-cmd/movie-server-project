@@ -30,9 +30,9 @@ data/cache/
 data/locks/          # Pipeline lock
 ```
 
-## 2. Scraper workflow (every 8 hours)
+## 2. Scraper workflow (every 12 hours)
 
-- Cron: `SCHEDULER_CRON=0 */8 * * *` (default).
+- Cron: `SCHEDULER_CRON=0 */12 * * *` (default — runs at **00:00** and **12:00** UTC).
 - **Sequential sections** (default): `PIPELINE_SEQUENTIAL_SECTIONS=true`, concurrency `1`.
 - Scheduled order: `PIPELINE_SCHEDULED_SECTIONS=home,model,channel,tag` (myanmar optional via `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true`).
 

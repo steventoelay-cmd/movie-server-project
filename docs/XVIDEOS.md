@@ -21,3 +21,7 @@ npm run pipeline:myanmar
 ```
 
 If list HTML changes, update selectors only in `src/scrapers/sites/xvideos/selectors.js`.
+
+## Channel child videos
+
+The channels index links to profile slugs (e.g. `/aistoryly`). Those pages show **related channels**, not videos. Child scrapes map the parent URL to **`/?u={slug}`** with search-style `p=` pagination before parsing video thumbs.
