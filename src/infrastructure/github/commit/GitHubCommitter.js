@@ -5,7 +5,7 @@ const { githubLogger } = require('../logging/githubLogger');
 
 /**
  * Commit orchestration helpers.
- * Supports empty repositories (first commit creates the branch).
+ * Empty repos are initialized via Contents API, then files are committed normally.
  */
 class GitHubCommitter {
   /**
@@ -28,16 +28,13 @@ class GitHubCommitter {
       return { commitSha: null, parentSha: null, skipped: true, emptyRepo: false };
     }
 
-    const parentSha = await this.uploader.tryGetRefSha();
-    const emptyRepo = !parentSha;
-    let baseTreeSha = null;
+    // Empty repo: Contents API creates first commit + branch, then we use Git Data API
+    const tip = await this.uploader.ensureBranchTip();
+    const parentSha = tip.sha;
+    const emptyRepo = tip.bootstrapped;
 
-    if (parentSha) {
-      const parentCommit = await this.uploader.getCommit(parentSha);
-      baseTreeSha = parentCommit.tree.sha;
-    } else {
-      this.logger.info('GitHub repository is empty — creating initial commit');
-    }
+    const parentCommit = await this.uploader.getCommit(parentSha);
+    const baseTreeSha = parentCommit.tree.sha;
 
     const treeEntries = [];
     for (const file of files) {
@@ -60,7 +57,7 @@ class GitHubCommitter {
     this.logger.info('GitHub commit created', {
       commitSha,
       parentSha,
-      emptyRepo,
+      bootstrapped: emptyRepo,
       files: files.length,
     });
 
@@ -68,17 +65,12 @@ class GitHubCommitter {
   }
 
   /**
-   * Point branch at commit (creates branch on empty repo).
+   * Point branch at commit.
    * @param {string} commitSha
-   * @param {object} [options]
-   * @param {boolean} [options.emptyRepo]
    */
-  async publish(commitSha, options = {}) {
-    await this.uploader.updateRef(commitSha, undefined, { create: Boolean(options.emptyRepo) });
-    this.logger.info('GitHub ref updated', {
-      commitSha,
-      created: Boolean(options.emptyRepo),
-    });
+  async publish(commitSha) {
+    await this.uploader.updateRef(commitSha);
+    this.logger.info('GitHub ref updated', { commitSha });
     return commitSha;
   }
 }

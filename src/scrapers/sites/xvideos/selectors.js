@@ -8,15 +8,31 @@ const { env } = require('../../../config/env');
  * Update selectors here only when the site HTML changes.
  *
  * List URLs come from HOME_* / MODELS_* / TAGS_* / CHANNELS_* / MYANMAR_* env.
+ *
+ * Home /best uses id="video-thumb-*"; search (?k=) uses id="video_*".
  */
 const videoThumbSelectors = {
-  item: 'div.thumb-block[id^="video-thumb-"]',
-  title: 'div.title',
-  image: 'div.thumb img',
-  url: 'a.thumb-link',
+  item: 'div.thumb-block[id^="video-thumb-"], div.thumb-block[id^="video_"]',
+  title: 'p.title a, div.title a, p.title, div.title',
+  image: 'div.thumb img, img',
+  url: 'p.title a, a.thumb-link, div.thumb > a, a[href*="/video"]',
 };
 
 const videoThumbAttributes = {
+  title: 'text',
+  image: 'attr:data-src',
+  url: 'attr:href',
+};
+
+/** Pornstars / channels index cards (thumbs often only inside <script>). */
+const profileIndexSelectors = {
+  item: 'div.thumb-block[id^="profile_"], div[id^="profile_"]',
+  title: 'p.profile-name a, span.profile-name, .profile-name a, .profile-name',
+  image: 'div.thumb img, img',
+  url: 'p.profile-name a, .profile-name a, div.thumb > a',
+};
+
+const profileIndexAttributes = {
   title: 'text',
   image: 'attr:data-src',
   url: 'attr:href',
@@ -66,41 +82,24 @@ module.exports = {
     },
     [SECTIONS.MODEL]: {
       baseUrl: env.sites.xvideosModelsUrl,
-      selectors: {
-        item: 'div.thumb-block, div[id^="profile_"]',
-        title: 'p.profile-name a, .profile-name a, p.title a, a',
-        image: 'img',
-        url: 'p.profile-name a, .profile-name a, a',
-      },
-      attributes: {
-        title: 'text',
-        image: 'attr:data-src',
-        url: 'attr:href',
-      },
+      selectors: profileIndexSelectors,
+      attributes: profileIndexAttributes,
       pagination: pathPagination,
     },
     [SECTIONS.CHANNEL]: {
       baseUrl: env.sites.xvideosChannelsUrl,
-      selectors: {
-        item: 'div.thumb-block, div[id^="profile_"]',
-        title: 'p.profile-name a, .profile-name a, p.title a, a',
-        image: 'img',
-        url: 'p.profile-name a, .profile-name a, a',
-      },
-      attributes: {
-        title: 'text',
-        image: 'attr:data-src',
-        url: 'attr:href',
-      },
+      selectors: profileIndexSelectors,
+      attributes: profileIndexAttributes,
       pagination: pathPagination,
     },
     [SECTIONS.TAG]: {
       baseUrl: env.sites.xvideosTagsUrl,
       selectors: {
-        item: '#tags li, .tags-list li, ul.tags li, a.tag',
-        title: 'a, b',
+        // Tags index has no thumbnails; keep title+url only.
+        item: '#tags li',
+        title: 'a[href*="/tags/"]',
         image: 'img',
-        url: 'a',
+        url: 'a[href*="/tags/"]',
       },
       attributes: {
         title: 'text',

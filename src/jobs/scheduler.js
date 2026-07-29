@@ -4,6 +4,7 @@ const cron = require('node-cron');
 const { schedulerConfig } = require('../config/scheduler.config');
 const { performanceConfig } = require('../config/performance.config');
 const { SyncOrchestrator } = require('../application/sync/SyncOrchestrator');
+const { resolveScheduledSections } = require('../config/catalog.config');
 const { runCleanupJob } = require('./cleanup.job');
 const { createLogger } = require('../infrastructure/logging/logger');
 const { getMetrics } = require('../infrastructure/metrics/MetricsCollector');
@@ -135,7 +136,11 @@ class PipelineScheduler {
     logger.info('Pipeline trigger', { source, sections: options.sections || 'all' });
 
     try {
-      this._currentPromise = this.orchestrator.run(options);
+      this._currentPromise = this.orchestrator.run({
+        ...options,
+        sequential: options.sequential ?? true,
+        sections: options.sections || resolveScheduledSections(),
+      });
       const report = await this._currentPromise;
       const durationMs = Date.now() - started;
       getMetrics().timing('scheduler.pipeline', durationMs);

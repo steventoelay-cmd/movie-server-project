@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { pipelineConfig } = require('../../config/pipeline.config');
+const { catalogConfig, catalogPageRelPath, catalogWritePaths } = require('../../config/catalog.config');
 const { performanceConfig } = require('../../config/performance.config');
 const { SECTIONS } = require('../../domain/constants/sections');
 const { hashPayload, sanitizeForCompare, hasContentChanged } = require('../../utils/jsonCompare.util');
@@ -41,7 +42,7 @@ function chunkItems(items, pageSize) {
  * Build versioned JSON document for Flutter CDN.
  * Extra future fields can be added under meta without breaking clients.
  */
-function buildDocument({ section, page, items, extraMeta = {} }) {
+function buildDocument({ section, page, items, extraMeta = {}, hasNext = false }) {
   const generatedAt = new Date().toISOString();
   const stableItems = items.map((item) => ({
     title: item.title,
@@ -57,6 +58,7 @@ function buildDocument({ section, page, items, extraMeta = {} }) {
     section,
     page,
     totalItems: stableItems.length,
+    hasNext: Boolean(hasNext),
     version: contentVersion,
     generatedAt,
     lastUpdate: generatedAt,
@@ -85,7 +87,26 @@ class JsonGeneratorService {
   }
 
   sectionFolder(section) {
-    return pipelineConfig.sectionFolders[section] || section;
+    const { sectionFolderName } = require('../../config/catalog.config');
+    return sectionFolderName(section);
+  }
+
+  /**
+   * Write the same document to primary (+ optional legacy mirror) paths.
+   * @param {string[]} relPaths
+   * @param {object} doc
+   */
+  async writeDocPaths(relPaths, doc) {
+    let written = false;
+    const paths = [];
+    for (const rel of relPaths) {
+      const result = await this.writeDoc(rel, doc);
+      paths.push(rel);
+      if (result.written) {
+        written = true;
+      }
+    }
+    return { written, path: paths[0], paths };
   }
 
   /**
@@ -173,19 +194,26 @@ class JsonGeneratorService {
 
     for (let i = 0; i < pages.length; i++) {
       const page = i + 1;
-      const rel = `${folder}/page-${page}.json`;
+      const relPaths = catalogWritePaths({
+        section,
+        page,
+        parentIndex: false,
+      });
       const doc = buildDocument({
         section,
         page,
         items: pages[i],
+        hasNext: i < pages.length - 1,
         extraMeta: { kind: 'list' },
       });
-      const result = await this.writeDoc(rel, doc);
+      const result = await this.writeDocPaths(relPaths, doc);
       if (result.written) {
         written += 1;
       }
-      files.push(rel);
-      keep.add(rel);
+      for (const rel of relPaths) {
+        files.push(rel);
+        keep.add(rel);
+      }
     }
 
     await this.pruneSection(section, keep);
@@ -213,25 +241,51 @@ class JsonGeneratorService {
     const folder = this.sectionFolder(section);
     await ensureDir(path.join(this.outputDir, folder));
 
-    const indexDoc = buildDocument({
-      section,
-      page: 1,
-      items: parents.map((p) => ({ title: p.title, img: p.img, url: p.url })),
-      extraMeta: { kind: 'index', parentCount: parents.length },
-    });
-    const indexRel = `${folder}/index.json`;
     const files = [];
     const keep = new Set();
     let written = 0;
-
-    const indexResult = await this.writeDoc(indexRel, indexDoc);
-    if (indexResult.written) {
-      written += 1;
-    }
-    files.push(indexRel);
-    keep.add(indexRel);
-
     let childTotal = 0;
+
+    const parentItems = parents.map((p) => ({ title: p.title, img: p.img, url: p.url }));
+    const useV2ParentPages = catalogConfig.layout === 'v2';
+    const parentPages = useV2ParentPages ? chunkItems(parentItems, this.pageSize) : [parentItems];
+
+    for (let pi = 0; pi < parentPages.length; pi++) {
+      const page = pi + 1;
+      const doc = buildDocument({
+        section,
+        page,
+        items: parentPages[pi],
+        hasNext: useV2ParentPages ? pi < parentPages.length - 1 : false,
+        extraMeta: { kind: useV2ParentPages ? 'parent-list' : 'index', parentCount: parents.length },
+      });
+
+      const relPaths = useV2ParentPages
+        ? catalogWritePaths({ section, page, parentIndex: false })
+        : catalogWritePaths({ section, page: 1, parentIndex: true });
+
+      const indexResult = await this.writeDocPaths(
+        pi === 0 && !useV2ParentPages ? relPaths : useV2ParentPages ? relPaths : [],
+        doc,
+      );
+      if (!useV2ParentPages && pi === 0) {
+        if (indexResult.written) {
+          written += 1;
+        }
+        for (const rel of relPaths) {
+          files.push(rel);
+          keep.add(rel);
+        }
+      } else if (useV2ParentPages) {
+        if (indexResult.written) {
+          written += 1;
+        }
+        for (const rel of relPaths) {
+          files.push(rel);
+          keep.add(rel);
+        }
+      }
+    }
 
     for (const parent of parents) {
       const parentId = parent.id;
@@ -243,11 +297,12 @@ class JsonGeneratorService {
 
       for (let i = 0; i < pages.length; i++) {
         const page = i + 1;
-        const rel = `${folder}/${parentId}/page-${page}.json`;
+        const relPaths = catalogWritePaths({ section, page, parentId });
         const doc = buildDocument({
           section,
           page,
           items: pages[i],
+          hasNext: i < pages.length - 1,
           extraMeta: {
             kind: 'children',
             parentId,
@@ -255,12 +310,14 @@ class JsonGeneratorService {
             parentUrl: parent.url,
           },
         });
-        const result = await this.writeDoc(rel, doc);
+        const result = await this.writeDocPaths(relPaths, doc);
         if (result.written) {
           written += 1;
         }
-        files.push(rel);
-        keep.add(rel);
+        for (const rel of relPaths) {
+          files.push(rel);
+          keep.add(rel);
+        }
       }
     }
 

@@ -19,13 +19,14 @@ class StreamCache {
   constructor(options = {}) {
     this.ttlMs = options.ttlMs ?? cacheConfig.streamTtlMs;
     this.graceMs = options.graceMs ?? cacheConfig.streamGraceMs;
+    const ramOnly = options.ramOnly ?? cacheConfig.streamRamOnly;
     this.facade = new CacheFacade({
       namespace: 'stream',
       ttlMs: this.ttlMs,
       memory: new MemoryStore({
         maxEntries: options.maxEntries || cacheConfig.streamMaxMemoryEntries,
       }),
-      file: new FileStore({ dir: options.dir || cacheConfig.streamDir }),
+      file: ramOnly ? null : new FileStore({ dir: options.dir || cacheConfig.streamDir }),
     });
     /** @type {Map<string, object>} last-known good entries for stale fallback */
     this._lastGood = new Map();

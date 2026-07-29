@@ -2,6 +2,7 @@
 
 const { createLogger } = require('../../infrastructure/logging/logger');
 const { getDetailCache } = require('../../infrastructure/cache');
+const { getRelatedSsdCache } = require('../../infrastructure/cache/RelatedSsdCache');
 const { SiteResolver } = require('../../scrapers/core/SiteResolver');
 const { PromiseLock } = require('../../infrastructure/concurrency/PromiseLock');
 const { canonicalizeUrl } = require('../../utils/url.util');
@@ -117,6 +118,11 @@ class DetailService {
       }
 
       await this.cache.set(canonical, detail);
+      try {
+        await getRelatedSsdCache().set(canonical, detail.related);
+      } catch (relatedErr) {
+        logger.warn('Related SSD cache write failed', { message: relatedErr.message });
+      }
 
       const scrapeDurationMs = Date.now() - scrapeStarted;
       const durationMs = Date.now() - started;

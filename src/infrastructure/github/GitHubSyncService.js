@@ -97,15 +97,13 @@ class GitHubSyncService {
 
     let parentSha = null;
     let commitSha = null;
-    let emptyRepo = false;
 
     try {
       const created = await this.committer.commitFiles(files, message);
       parentSha = created.parentSha;
       commitSha = created.commitSha;
-      emptyRepo = Boolean(created.emptyRepo);
 
-      await this.committer.publish(commitSha, { emptyRepo });
+      await this.committer.publish(commitSha);
 
       versionMeta.commitSha = commitSha;
       versionMeta.version = commitSha ? commitSha.slice(0, 12) : null;

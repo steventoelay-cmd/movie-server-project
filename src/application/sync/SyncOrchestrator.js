@@ -112,34 +112,68 @@ class SyncOrchestrator {
       await ensureDir(pipelineConfig.outputDir);
       await ensureDir(pipelineConfig.previousDir);
 
-      // Independent sections can run in parallel (bounded). Same-site still paced by RequestQueue.
-      const sectionConcurrency = performanceConfig.sectionConcurrency;
-      const sectionOutcomes = await mapLimit(sections, sectionConcurrency, async (section) => {
-        const sectionStarted = Date.now();
-        try {
-          const result = await this.runSection(section);
-          return {
-            section,
-            ok: true,
-            ...result,
-            durationMs: Date.now() - sectionStarted,
-          };
-        } catch (error) {
-          logger.error('Section pipeline failed; continuing', {
-            section,
-            message: error.message,
-            code: error.code,
-          });
-          return {
-            section,
-            ok: false,
-            error: error.message,
-            code: error.code,
-            durationMs: Date.now() - sectionStarted,
-            files: [],
-          };
+      // Sequential sections on 1GB VPS (home → model → channel → tag); parallel only when configured.
+      const sequential =
+        options.sequential ?? performanceConfig.sequentialSections;
+      const sectionConcurrency = sequential ? 1 : performanceConfig.sectionConcurrency;
+
+      let sectionOutcomes;
+      if (!sequential && sectionConcurrency > 1) {
+        sectionOutcomes = await mapLimit(sections, sectionConcurrency, async (section) => {
+          const sectionStarted = Date.now();
+          try {
+            const result = await this.runSection(section);
+            return {
+              section,
+              ok: true,
+              ...result,
+              durationMs: Date.now() - sectionStarted,
+            };
+          } catch (error) {
+            logger.error('Section pipeline failed; continuing', {
+              section,
+              message: error.message,
+              code: error.code,
+            });
+            return {
+              section,
+              ok: false,
+              error: error.message,
+              code: error.code,
+              durationMs: Date.now() - sectionStarted,
+              files: [],
+            };
+          }
+        });
+      } else {
+        sectionOutcomes = [];
+        for (const section of sections) {
+          const sectionStarted = Date.now();
+          try {
+            const result = await this.runSection(section);
+            sectionOutcomes.push({
+              section,
+              ok: true,
+              ...result,
+              durationMs: Date.now() - sectionStarted,
+            });
+          } catch (error) {
+            logger.error('Section pipeline failed; continuing', {
+              section,
+              message: error.message,
+              code: error.code,
+            });
+            sectionOutcomes.push({
+              section,
+              ok: false,
+              error: error.message,
+              code: error.code,
+              durationMs: Date.now() - sectionStarted,
+              files: [],
+            });
+          }
         }
-      });
+      }
 
       for (const outcome of sectionOutcomes) {
         report.sectionResults.push(outcome);

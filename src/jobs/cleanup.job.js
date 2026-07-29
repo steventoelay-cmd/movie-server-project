@@ -3,6 +3,8 @@
 const path = require('path');
 const fsp = require('fs/promises');
 const { getDetailCache, getStreamCache } = require('../infrastructure/cache');
+const { getCatalogSsdCache } = require('../infrastructure/cache/CatalogSsdCache');
+const { getRelatedSsdCache } = require('../infrastructure/cache/RelatedSsdCache');
 const { getHtmlPageCache } = require('../infrastructure/cache/HtmlPageCache');
 const { performanceConfig } = require('../config/performance.config');
 const { ensureDir, listFilesRecursive } = require('../utils/file.util');
@@ -37,6 +39,18 @@ async function runCleanupJob(options = {}) {
     report.stream = await getStreamCache().cleanup();
   } catch (error) {
     logger.warn('Stream cache cleanup failed', { message: error.message });
+  }
+
+  try {
+    report.catalog = await getCatalogSsdCache().cleanup();
+  } catch (error) {
+    logger.warn('Catalog SSD cache cleanup failed', { message: error.message });
+  }
+
+  try {
+    report.related = await getRelatedSsdCache().cleanup();
+  } catch (error) {
+    logger.warn('Related SSD cache cleanup failed', { message: error.message });
   }
 
   try {

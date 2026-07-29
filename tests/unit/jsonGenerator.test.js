@@ -42,6 +42,17 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
     expect(doc.page).toBe(1);
     expect(doc.items[0]).toEqual({ title: 't', img: 'https://i', url: 'https://u' });
     expect(doc.items[0]).not.toHaveProperty('m3u8');
+    expect(doc.hasNext).toBe(false);
+  });
+
+  test('buildDocument sets hasNext when requested', () => {
+    const doc = buildDocument({
+      section: 'home',
+      page: 1,
+      items: [{ title: 't', img: 'https://i', url: 'https://u' }],
+      hasNext: true,
+    });
+    expect(doc.hasNext).toBe(true);
   });
 
   test('generateHome writes paginated files and empty list still produces page-1', async () => {

@@ -103,17 +103,82 @@ class GitHubUploader {
     try {
       return await this.getRefSha(branch);
     } catch (error) {
-      const msg = String(error.message || '');
-      const empty =
-        error.statusCode === 404 ||
-        error.statusCode === 409 ||
-        /empty/i.test(msg) ||
-        /not found/i.test(msg);
-      if (empty) {
+      if (this.isEmptyRepoError(error)) {
+        this.logger.info('GitHub branch missing or repo empty', {
+          branch,
+          message: error.message,
+          statusCode: error.statusCode,
+        });
         return null;
       }
       throw error;
     }
+  }
+
+  /**
+   * @param {Error} error
+   * @returns {boolean}
+   */
+  isEmptyRepoError(error) {
+    const msg = String(error?.message || '');
+    const status = error?.statusCode;
+    return (
+      status === 404 ||
+      status === 409 ||
+      /git repository is empty/i.test(msg) ||
+      /not found/i.test(msg) ||
+      /does not exist/i.test(msg)
+    );
+  }
+
+  /**
+   * Create the first commit on an empty repo via Contents API (reliable bootstrap).
+   * After this, Git Data API refs exist and normal uploads work.
+   * @param {string} [branch]
+   * @returns {Promise<string>} branch tip SHA
+   */
+  async bootstrapEmptyRepository(branch = this.config.branch) {
+    this.logger.info('Bootstrapping empty GitHub repository via Contents API', { branch });
+
+    // For a completely empty repo, omit `branch` so GitHub creates the default branch.
+    // Passing branch on an empty repo often returns "Git Repository is empty."
+    await this.request('PUT', this.auth.repoApi('/contents/.gitkeep'), {
+      message: 'chore: initialize catalog repository',
+      content: Buffer.from('# catalog data\n').toString('base64'),
+    });
+
+    // Prefer configured branch; fall back to whatever tip GitHub created
+    let sha = await this.tryGetRefSha(branch);
+    if (!sha) {
+      sha = await this.tryGetRefSha('main');
+    }
+    if (!sha) {
+      sha = await this.tryGetRefSha('master');
+    }
+    if (!sha) {
+      throw new GitHubError('Repository bootstrap succeeded but branch tip was not found', {
+        code: 'GITHUB_BOOTSTRAP_FAILED',
+        statusCode: 500,
+        meta: { branch },
+      });
+    }
+
+    this.logger.info('Empty repository initialized', { branch, sha });
+    return sha;
+  }
+
+  /**
+   * Ensure branch exists; bootstrap when repo has zero commits.
+   * @param {string} [branch]
+   * @returns {Promise<{ sha: string, bootstrapped: boolean }>}
+   */
+  async ensureBranchTip(branch = this.config.branch) {
+    const existing = await this.tryGetRefSha(branch);
+    if (existing) {
+      return { sha: existing, bootstrapped: false };
+    }
+    const sha = await this.bootstrapEmptyRepository(branch);
+    return { sha, bootstrapped: true };
   }
 
   async getCommit(sha) {
