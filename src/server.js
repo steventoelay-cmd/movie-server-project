@@ -65,6 +65,7 @@ function startServer(options = {}) {
       stream: 'GET /stream?url=',
       health: 'GET /health',
       admin: 'POST /admin/pipeline',
+      apiKeyAuth: securityConfig.requireApiKey || Boolean(securityConfig.apiKey),
       memory: getMemoryStats(),
     });
     // PM2 wait_ready / readiness signal (no-op if not under PM2)

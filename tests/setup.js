@@ -5,6 +5,7 @@
  */
 process.env.NODE_ENV = 'test';
 process.env.LOG_LEVEL = process.env.LOG_LEVEL || 'error';
+process.env.API_KEY = '';
 process.env.REQUIRE_API_KEY = 'false';
 process.env.REQUIRE_ADMIN_KEY = 'false';
 process.env.HEALTH_EXPOSE_METRICS = 'false';

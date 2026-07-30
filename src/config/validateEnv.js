@@ -18,8 +18,20 @@ function validateEnv(options = {}) {
   const errors = [];
   const warnings = [];
 
-  if (securityConfig.requireApiKey && !process.env.API_KEY) {
-    errors.push('API_KEY is required when REQUIRE_API_KEY=true (or NODE_ENV=production)');
+  const apiKey = securityConfig.apiKey;
+  if (securityConfig.requireApiKey && !apiKey) {
+    errors.push(
+      'API_KEY is required when REQUIRE_API_KEY=true — set a strong secret in .env (see .env.example)',
+    );
+  }
+
+  if (apiKey && apiKey.length < securityConfig.apiKeyMinLength) {
+    const msg = `API_KEY must be at least ${securityConfig.apiKeyMinLength} characters`;
+    if (strict) {
+      errors.push(msg);
+    } else {
+      warnings.push(msg);
+    }
   }
 
   if (securityConfig.requireAdminKey && !process.env.ADMIN_API_KEY) {

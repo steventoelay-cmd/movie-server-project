@@ -9,8 +9,14 @@ const securityConfig = Object.freeze({
   nodeEnv: env.nodeEnv,
   isProduction: env.nodeEnv === 'production',
 
-  /** Fail closed on Detail/Stream when true */
-  requireApiKey: boolEnv('REQUIRE_API_KEY', env.nodeEnv === 'production'),
+  /** Client app key — Flutter sends `X-Api-Key` with this value */
+  apiKey: String(env.api.apiKey || '').trim(),
+
+  /** Fail closed when API_KEY is not configured (default: required) */
+  requireApiKey: boolEnv('REQUIRE_API_KEY', true),
+
+  /** Minimum API_KEY length when enforcement is enabled */
+  apiKeyMinLength: intEnv('API_KEY_MIN_LENGTH', 16),
 
   /** Admin/scheduler trigger key (future JWT/OAuth can sit beside this) */
   adminApiKey: process.env.ADMIN_API_KEY || '',

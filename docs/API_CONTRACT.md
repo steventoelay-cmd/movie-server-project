@@ -151,12 +151,35 @@ id        <- item.id.isNotEmpty ? item.id : sha256(url).substring(0, 16)
 
 Base URL: your VPS (e.g. `https://api.example.com`)
 
-Headers (optional / production):
+Headers (required for client apps when `API_KEY` is set in server `.env`):
 
 | Header | When |
 |--------|------|
-| `X-Api-Key` | If `API_KEY` / `REQUIRE_API_KEY` enabled |
+| `X-Api-Key` | **Required** on `/detail`, `/stream`, `/catalog`, and `/data/*` when `API_KEY` is configured (default in production) |
 | `X-Request-Id` | Optional; echoed if sent |
+
+Server startup **fails** if `REQUIRE_API_KEY=true` (default) and `API_KEY` is missing or shorter than 16 characters.
+
+`GET /health` remains public (no API key).
+
+Generate a key on the server:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Set in `.env`:
+
+```env
+API_KEY=<generated_hex>
+REQUIRE_API_KEY=true
+```
+
+Flutter must use the **same** value at build time:
+
+```bash
+flutter build apk --dart-define=API_BASE_URL=http://3.27.216.154:3000 --dart-define=API_KEY=<same_hex>
+```
 
 ### 3.1 Health
 

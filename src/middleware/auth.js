@@ -57,8 +57,8 @@ function createAuthMiddleware(mode = 'apiKey') {
       return next();
     }
 
-    // apiKey mode (Detail/Stream)
-    const configured = process.env.API_KEY || '';
+    // apiKey mode (Detail/Stream/Catalog)
+    const configured = securityConfig.apiKey;
     if (!configured) {
       if (securityConfig.requireApiKey) {
         securityLogger.error('API_KEY required but missing', { requestId: req.requestId });
@@ -73,7 +73,7 @@ function createAuthMiddleware(mode = 'apiKey') {
       return next();
     }
 
-    const key = req.headers['x-api-key'];
+    const key = String(req.headers['x-api-key'] || '').trim();
     if (key !== configured) {
       securityLogger.warn('API key authentication failure', {
         requestId: req.requestId,
