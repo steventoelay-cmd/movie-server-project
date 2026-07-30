@@ -12,6 +12,7 @@ const streamConfig = Object.freeze({
   graceMs: env.cache.streamGraceMs,
   inboundRateMax: env.stream.inboundRateMax,
   inboundRateWindowMs: env.stream.inboundRateWindowMs,
+  maxIframeDepth: 2,
 });
 
 module.exports = { streamConfig };

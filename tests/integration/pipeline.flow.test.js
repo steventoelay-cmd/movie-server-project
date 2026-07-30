@@ -65,7 +65,9 @@ describe('Integration: detail → related → stream (offline fixtures)', () => 
     const shaped = shapeResponse(detail);
 
     expect(shaped.title).toBe('Sample Video');
+    expect(shaped.id).toMatch(/^[a-f0-9]{16}$/);
     expect(shaped.related.length).toBe(1);
+    expect(shaped.related[0].id).toMatch(/^[a-f0-9]{16}$/);
     expect(shaped).not.toHaveProperty('m3u8');
 
     const streamParsed = parseStream(

@@ -73,7 +73,31 @@ class SiteResolver {
       };
     }
 
+    const adapter = this.findAdapterForHost(hostname);
+    if (adapter && typeof adapter.isChildVideoUrl === 'function' && !adapter.isChildVideoUrl(ssrf.url.href)) {
+      return {
+        ok: false,
+        message: 'url is not a child video page (parent/index URLs are not allowed)',
+        hostname,
+        code: 'URL_NOT_CHILD_VIDEO',
+      };
+    }
+
     return { ok: true, hostname };
+  }
+
+  /**
+   * @param {string} hostname
+   * @returns {import('./SiteAdapter').SiteAdapter|null}
+   */
+  findAdapterForHost(hostname) {
+    for (const siteId of this.registry.list()) {
+      const adapter = this.registry.get(siteId);
+      if (adapter.matchesHost(hostname) && adapter.detailConfig) {
+        return adapter;
+      }
+    }
+    return null;
   }
 
   /**
@@ -91,11 +115,9 @@ class SiteResolver {
     }
 
     const hostname = check.hostname;
-    for (const siteId of this.registry.list()) {
-      const adapter = this.registry.get(siteId);
-      if (adapter.matchesHost(hostname) && adapter.detailConfig) {
-        return adapter;
-      }
+    const matched = this.findAdapterForHost(hostname);
+    if (matched) {
+      return matched;
     }
 
     for (const siteId of this.registry.list()) {

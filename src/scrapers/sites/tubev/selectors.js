@@ -76,6 +76,12 @@ module.exports = {
     },
   },
   detailHosts: ['tubev.sex'],
+  childUrlPatterns: [
+    /^\/videos?\//i,
+    /^\/video\//i,
+    /^\/watch\//i,
+    /^\/embed\//i,
+  ],
   detailConfig: {
     fields: {
       title: { selector: 'h1, .video-title, .title, a.i.tur', attribute: 'text' },
@@ -122,6 +128,16 @@ module.exports = {
         /"(https?:\/\/[^"\\]+\.m3u8[^"\\]*)"/i,
         /m3u8\s*[=:]\s*["']([^"']+\.m3u8[^"']*)["']/i,
         /hls[_]?url\s*[=:]\s*["']([^"']+)["']/i,
+      ],
+      mp4Patterns: [
+        /"(https?:\/\/[^"\\]+\.mp4[^"\\]*)"/i,
+        /'(https?:\/\/[^'\\]+\.mp4[^'\\]*)'/i,
+        /https?:\/\/vcdn[^"'\\s]+\.mp4[^"'\\s]*/i,
+      ],
+      scriptMp4Patterns: [
+        /"(https?:\/\/[^"\\]+\.mp4[^"\\]*)"/i,
+        /'(https?:\/\/[^'\\]+\.mp4[^'\\]*)'/i,
+        /https?:\/\/vcdn[^"'\\s]+\.mp4[^"'\\s]*/i,
       ],
       followIframe: true,
       iframeSelector: 'iframe.player, iframe#player, iframe[src*="embed"], iframe[src*="player"]',

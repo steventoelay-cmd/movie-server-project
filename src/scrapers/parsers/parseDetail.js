@@ -3,6 +3,7 @@
 const cheerio = require('cheerio');
 const { extractField } = require('./extractField');
 const { parseList } = require('./parseList');
+const { parseScriptRelated } = require('./parseRelatedScripts');
 const { resolveUrl } = require('../../utils/url.util');
 
 /**
@@ -96,6 +97,14 @@ function parseDetail(html, detailConfig, pageUrl) {
     }
   } catch {
     related = [];
+  }
+
+  if (!related.length) {
+    try {
+      related = parseScriptRelated(html, pageUrl);
+    } catch {
+      related = [];
+    }
   }
 
   return {

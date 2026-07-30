@@ -55,6 +55,12 @@ module.exports = {
     },
   },
   detailHosts: ['sexvid.xxx'],
+  childUrlPatterns: [
+    /^\/videos?\//i,
+    /^\/video\//i,
+    /^\/watch\//i,
+    /^\/embed\//i,
+  ],
   detailConfig: {
     fields: {
       title: { selector: 'h1, .video-title, .title', attribute: 'text' },

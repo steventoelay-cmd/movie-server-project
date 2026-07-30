@@ -43,12 +43,15 @@ function chunkItems(items, pageSize) {
  * Extra future fields can be added under meta without breaking clients.
  */
 function buildDocument({ section, page, items, extraMeta = {}, hasNext = false, itemsShape = 'default' }) {
+  const { itemIdFromUrl } = require('../../utils/itemId.util');
   const generatedAt = new Date().toISOString();
   const stableItems = items.map((item) => {
+    const id = item.id || itemIdFromUrl(item.url);
     if (itemsShape === 'titleUrl') {
-      return { title: item.title, url: item.url };
+      return { id, title: item.title, url: item.url };
     }
     return {
+      id,
       title: item.title,
       img: item.img || '',
       url: item.url,

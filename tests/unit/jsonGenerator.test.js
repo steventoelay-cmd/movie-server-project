@@ -31,7 +31,7 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
     expect(chunkItems([], 100)).toHaveLength(1);
   });
 
-  test('buildDocument schema fields and strips to title/img/url', () => {
+  test('buildDocument schema fields include id and strips extras', () => {
     const doc = buildDocument({
       section: 'home',
       page: 1,
@@ -40,7 +40,11 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
     expect(doc.schemaVersion).toBeDefined();
     expect(doc.generatorVersion).toBeDefined();
     expect(doc.page).toBe(1);
-    expect(doc.items[0]).toEqual({ title: 't', img: 'https://i', url: 'https://u' });
+    expect(doc.items[0].title).toBe('t');
+    expect(doc.items[0].img).toBe('https://i');
+    expect(doc.items[0].url).toBe('https://u');
+    expect(doc.items[0].id).toMatch(/^[a-f0-9]{16}$/);
+    expect(doc.items[0]).not.toHaveProperty('extra');
     expect(doc.items[0]).not.toHaveProperty('m3u8');
     expect(doc.hasNext).toBe(false);
   });
@@ -97,10 +101,9 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
       const children = new Map([[parent.id, makeItems(1, 'https://ex.com/v')]]);
       await generator.generateParentChild('tag', [parent], children);
       const index = JSON.parse(await fsp.readFile(path.join(tmp, 'tags', 'index.json'), 'utf8'));
-      expect(index.items[0]).toEqual({
-        title: 'amateur',
-        url: 'https://www.xvideos.com/tags/amateur',
-      });
+      expect(index.items[0].title).toBe('amateur');
+      expect(index.items[0].url).toBe('https://www.xvideos.com/tags/amateur');
+      expect(index.items[0].id).toMatch(/^[a-f0-9]{16}$/);
       expect(index.items[0]).not.toHaveProperty('img');
     } finally {
       await removeDir(tmp);

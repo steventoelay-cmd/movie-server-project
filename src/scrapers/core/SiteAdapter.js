@@ -40,11 +40,33 @@ class SiteAdapter {
     this.detailHosts = (options.detailHosts || []).map((h) =>
       String(h).toLowerCase().replace(/^www\./, ''),
     );
+    /** @type {RegExp[]} pathname patterns that identify child/watch video pages */
+    this.childUrlPatterns = Array.isArray(options.childUrlPatterns)
+      ? options.childUrlPatterns.filter((p) => p instanceof RegExp)
+      : [];
   }
 
   /** @param {string} section */
   supportsSection(section) {
     return this.supportedSections.includes(section);
+  }
+
+  /**
+   * Whether URL looks like a child video page (not parent index/profile).
+   * When no patterns are configured, returns true (host allowlist alone).
+   * @param {string} url
+   * @returns {boolean}
+   */
+  isChildVideoUrl(url) {
+    if (!this.childUrlPatterns.length) {
+      return true;
+    }
+    try {
+      const pathname = new URL(url).pathname || '';
+      return this.childUrlPatterns.some((re) => re.test(pathname));
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -151,6 +173,7 @@ class SelectorSiteAdapter extends SiteAdapter {
    * @param {object} [options.detailConfig] - detail + related selectors (no m3u8)
    * @param {object} [options.streamConfig] - m3u8 extraction config (Play only)
    * @param {string[]} [options.detailHosts] - hostnames this adapter handles for /detail
+   * @param {RegExp[]} [options.childUrlPatterns] - pathname patterns for watch/child pages
    * @param {string[]} [options.supportedSections]
    * @param {object} [options.headers]
    */
@@ -167,6 +190,7 @@ class SelectorSiteAdapter extends SiteAdapter {
       fetcher: options.fetcher,
       logger: options.logger,
       detailHosts: options.detailHosts,
+      childUrlPatterns: options.childUrlPatterns,
     });
 
     this.sectionConfigs = sectionConfigs;
@@ -176,6 +200,9 @@ class SelectorSiteAdapter extends SiteAdapter {
     this.detailHosts = (options.detailHosts || []).map((h) =>
       String(h).toLowerCase().replace(/^www\./, ''),
     );
+    this.childUrlPatterns = Array.isArray(options.childUrlPatterns)
+      ? options.childUrlPatterns.filter((p) => p instanceof RegExp)
+      : this.childUrlPatterns;
   }
 
   /** @param {string} section */

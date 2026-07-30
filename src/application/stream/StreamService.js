@@ -38,7 +38,7 @@ class StreamService {
     if (!check.ok) {
       const err = new Error(check.message);
       err.statusCode = 400;
-      err.code = 'INVALID_STREAM_URL';
+      err.code = check.code || 'INVALID_STREAM_URL';
       throw err;
     }
 
@@ -48,7 +48,9 @@ class StreamService {
     return this.lock.run(lockKey, async () => {
       const cached = await this.cache.get(canonical);
       if (cached.hit && !cached.stale && cached.entry?.m3u8) {
-        const validation = validateStreamUrl(cached.entry.m3u8);
+        const validation = validateStreamUrl(cached.entry.m3u8, {
+          requireM3u8: (cached.entry.type || 'm3u8') !== 'mp4',
+        });
         if (validation.valid) {
           const ageSec = Math.max(0, Math.floor((Date.now() - cached.entry.createdAt) / 1000));
           const expiresIn = Math.max(
@@ -82,18 +84,20 @@ class StreamService {
         const extracted = await this._extractWithRetry(canonical, (n) => {
           retriesUsed = n;
         });
-        const validation = validateStreamUrl(extracted.url);
+        const validation = validateStreamUrl(extracted.url, {
+          requireM3u8: extracted.type !== 'mp4',
+        });
         if (!validation.valid) {
-          throw new ScrapeError(`Invalid m3u8: ${validation.reason}`, {
-            code: 'INVALID_M3U8',
+          throw new ScrapeError(`Invalid stream URL: ${validation.reason}`, {
+            code: extracted.type === 'mp4' ? 'INVALID_MP4' : 'INVALID_M3U8',
             statusCode: 422,
-            meta: { reason: validation.reason, url: canonical },
+            meta: { reason: validation.reason, url: canonical, type: extracted.type },
           });
         }
 
         const payload = {
           url: extracted.url,
-          type: 'm3u8',
+          type: extracted.type || 'm3u8',
           validationStatus: 'valid',
           siteId: extracted.siteId,
           qualities: extracted.qualities || [],
@@ -101,7 +105,7 @@ class StreamService {
           subtitles: extracted.subtitles || [],
           audioTracks: extracted.audioTracks || [],
           drm: extracted.drm || null,
-          adaptive: true,
+          adaptive: extracted.type !== 'mp4',
         };
 
         await this.cache.set(canonical, payload);
@@ -138,7 +142,9 @@ class StreamService {
         if (this.config.allowStaleOnFailure) {
           const stale = await this.cache.get(canonical, { allowStale: true });
           if (stale.hit && stale.entry?.m3u8) {
-            const validation = validateStreamUrl(stale.entry.m3u8);
+            const validation = validateStreamUrl(stale.entry.m3u8, {
+              requireM3u8: (stale.entry.type || 'm3u8') !== 'mp4',
+            });
             if (validation.valid) {
               const ageSec = Math.max(0, Math.floor((Date.now() - stale.entry.createdAt) / 1000));
               logger.warn('Returning stale stream cache after extraction failure', {
@@ -214,29 +220,40 @@ class StreamService {
 
     let parsed = adapter.parseStream(html, canonical);
 
-    // Optional iframe follow (site-configured)
-    if (!parsed.m3u8 && parsed.iframeSrc) {
+    const maxIframeDepth = this.config.maxIframeDepth ?? 2;
+    let iframeDepth = 0;
+    let iframeBase = canonical;
+    while (!parsed.m3u8 && !parsed.mp4 && parsed.iframeSrc && iframeDepth < maxIframeDepth) {
+      iframeDepth += 1;
       logger.debug('Following stream iframe', {
         url: canonical,
         iframeSrc: parsed.iframeSrc,
         siteId: adapter.siteId,
+        depth: iframeDepth,
       });
       try {
+        iframeBase = parsed.iframeSrc;
         html = await adapter.fetchHtml(parsed.iframeSrc, {
           timeoutMs: this.config.timeoutMs,
           retries: 0,
+          headers: { Referer: canonical },
         });
-        parsed = adapter.parseStream(html, parsed.iframeSrc);
+        parsed = adapter.parseStream(html, iframeBase);
       } catch (error) {
         logger.warn('Iframe stream fetch failed', {
           iframeSrc: parsed.iframeSrc,
+          depth: iframeDepth,
           message: error.message,
         });
+        break;
       }
     }
 
-    if (!parsed.m3u8) {
-      const err = new ScrapeError('No playable m3u8 found on video page', {
+    const streamUrl = parsed.m3u8 || parsed.mp4;
+    const streamType = parsed.m3u8 ? 'm3u8' : 'mp4';
+
+    if (!streamUrl) {
+      const err = new ScrapeError('No playable stream found on video page', {
         code: 'M3U8_NOT_FOUND',
         statusCode: 404,
         retryable: false,
@@ -245,11 +262,17 @@ class StreamService {
       throw err;
     }
 
+    const mirrors = [];
+    if (parsed.m3u8 && parsed.mp4) {
+      mirrors.push({ url: parsed.mp4, type: 'mp4' });
+    }
+
     return {
-      url: parsed.m3u8,
+      url: streamUrl,
+      type: streamType,
       siteId: adapter.siteId,
       qualities: [],
-      mirrors: parsed.mp4 ? [{ url: parsed.mp4, type: 'mp4' }] : [],
+      mirrors,
       subtitles: [],
       audioTracks: [],
       drm: null,
@@ -268,19 +291,20 @@ function buildSuccessResponse({
   durationMs,
   retries,
 }) {
+  const streamType = payload?.type || (streamUrl.includes('.mp4') ? 'mp4' : 'm3u8');
   return {
     success: true,
     stream: {
       url: streamUrl,
       expiresIn,
-      type: 'm3u8',
+      type: streamType,
       // Future-compatible fields (non-breaking)
       qualities: payload?.qualities || [],
       mirrors: payload?.mirrors || [],
       subtitles: payload?.subtitles || [],
       audioTracks: payload?.audioTracks || [],
       drm: payload?.drm || null,
-      adaptive: payload?.adaptive !== false,
+      adaptive: streamType !== 'mp4' && payload?.adaptive !== false,
     },
     cache: {
       hit: cacheHit,

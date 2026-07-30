@@ -49,6 +49,7 @@ Every list/index/children page file uses this shape (already generated):
   "section": "home",
   "page": 1,
   "totalItems": 100,
+  "hasNext": true,
   "version": "a1b2c3d4e5f67890",
   "generatedAt": "2026-07-21T06:00:00.000Z",
   "lastUpdate": "2026-07-21T06:00:00.000Z",
@@ -58,6 +59,7 @@ Every list/index/children page file uses this shape (already generated):
   },
   "items": [
     {
+      "id": "a1b2c3d4e5f67890",
       "title": "Video title",
       "img": "https://cdn.example.com/poster.jpg",
       "url": "https://www.example.com/watch/abc"
@@ -73,6 +75,7 @@ Every list/index/children page file uses this shape (already generated):
 | `section` | string | yes | `home` \| `model` \| `channel` \| `tag` |
 | `page` | int | yes | 1-based page index |
 | `totalItems` | int | yes | Items **on this page** (not global total) |
+| `hasNext` | bool | yes | `true` when another page file exists |
 | `version` | string | yes | Content hash of items (ignore volatile timestamps when caching) |
 | `generatedAt` | ISO-8601 | yes | Generation time |
 | `lastUpdate` | ISO-8601 | yes | Same as generatedAt today; reserved for future |
@@ -83,8 +86,9 @@ Every list/index/children page file uses this shape (already generated):
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
+| `id` | string | yes | Stable `sha256(canonicalUrl).slice(0,16)` — use for Flutter keys |
 | `title` | string | yes | Never null; may be `"Untitled"` only in edge cases on APIs |
-| `img` | string | yes | Absolute URL; may be `""` if missing |
+| `img` | string | yes* | Absolute URL; may be `""` if missing. *Tag parents omit `img` |
 | `url` | string | yes | Absolute child or parent page URL |
 
 **Not included:** `m3u8`, stream URLs, tokens, nested related, detail text.
@@ -99,16 +103,18 @@ Flutter should treat:
 |------------------|--------------------|
 | `page` | From JSON `page` or filename `page-{n}` |
 | `limit` | Configured page size (same as server `JSON_PAGE_SIZE`) |
-| `hasNext` | `items.length == limit` **or** next file `page-{n+1}.json` returns 200 |
+| `hasNext` | Prefer document `hasNext`; fallback `items.length == limit` |
 | `total` | Optional; not global today — do not require for infinite scroll |
 | `updatedAt` | Map from `lastUpdate` or `generatedAt` |
 | `version` | Use JSON `version` (content) + `schemaVersion` (schema) |
+| `id` | Prefer item `id`; fallback `sha256(url).substring(0, 16)` |
 
 **Recommended Flutter parse aliases (null-safe):**
 
 ```dart
 updatedAt <- lastUpdate ?? generatedAt
-hasNext   <- items.length >= pageSize  // or HEAD/GET next page
+hasNext   <- hasNext ?? (items.length >= pageSize)
+id        <- item.id.isNotEmpty ? item.id : sha256(url).substring(0, 16)
 ```
 
 ### 2.3 Home
@@ -136,14 +142,8 @@ hasNext   <- items.length >= pageSize  // or HEAD/GET next page
 **`id` (Flutter):**
 
 - Server folder `parentId` is stable (slug + hash).
-- List JSON items do **not** currently embed `id`.
-- Flutter **should derive** client id for lists:
-
-```text
-id = sha1(url).substring(0, 16)   // or package:uuid from url
-```
-
-For parents opened from index, prefer `meta.parentId` from children pages when available; otherwise hash(`parent.url`).
+- List JSON items **embed** `id` (`sha256(canonicalUrl).slice(0,16)`).
+- For parents opened from index, prefer `meta.parentId` from children pages when available; otherwise use parent item `id`.
 
 ---
 
@@ -182,6 +182,7 @@ Alias: `GET /api/detail?url=`
 ```json
 {
   "schemaVersion": 1,
+  "id": "a1b2c3d4e5f67890",
   "title": "Video title",
   "img": "https://cdn.example.com/poster.jpg",
   "description": "Optional description",
@@ -196,6 +197,7 @@ Alias: `GET /api/detail?url=`
   },
   "related": [
     {
+      "id": "b2c3d4e5f6789012",
       "title": "Related one",
       "img": "https://cdn.example.com/r1.jpg",
       "url": "https://www.example.com/watch/rel1"
@@ -214,8 +216,9 @@ Alias: `GET /api/detail?url=`
 | Missing description | Empty string `""` — still success |
 | Missing related | `[]` — still success |
 | Cache | Header `X-Cache: HIT\|MISS` |
+| Child URL only | Parent/index URLs return `URL_NOT_CHILD_VIDEO` |
 
-**Flutter mapping:** treat response body as `VideoDetail`. Derive `id` from `extensions.sourceUrl` or request `url`.
+**Flutter mapping:** treat response body as `VideoDetail`. Prefer `id`; fallback from `extensions.sourceUrl` or request `url`.
 
 ### 3.3 Stream (Play only)
 
@@ -258,8 +261,40 @@ Alias: `GET /api/stream?url=`
 | `expiresIn` | `stream.expiresIn` (seconds) |
 
 Call **only** when user presses Play. Refresh when player fails or near expiry.
+Parent/index URLs are rejected (`URL_NOT_CHILD_VIDEO`).
 
-### 3.4 Admin (ops only — not for Flutter app users)
+### 3.4 Catalog load-more (optional — same JSON as GitHub)
+
+Use when page 2+ is not yet on CDN, or to read local `output/` behind the API.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/catalog/:section/page/:page` | Flat lists (`home`, `myanmar`) |
+| `GET` | `/catalog/:section/parent/:page` | Parent index pages |
+| `GET` | `/catalog/:section/child/:parentId/page/:page` | Children under a parent |
+
+Aliases under `/api/catalog/...`. Same auth/rate-limit as Detail.
+
+**Response:** identical list document shape as GitHub JSON (`schemaVersion`, `hasNext`, `items[{id,title,img,url}]`, …). Internal `_meta` is **not** exposed. Header `X-Cache: HIT|MISS` may be set.
+
+Prefer GitHub CDN for page 1 browsing; call `/catalog` only for load-more / fallback.
+
+### 3.5 Catalog CDN mirror (Flutter `CATALOG_BASE_URL` on the API host)
+
+When `CATALOG_CDN_ENABLED=true` (default), the server exposes the **same relative paths** as GitHub raw JSON under `/data` (and `/api/data`). Flutter can set:
+
+`CATALOG_BASE_URL=http://127.0.0.1:3000/data`
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/data/home/page-{n}.json` | Flat lists (`home`, `myanmar`) |
+| `GET` | `/data/models/index.json` | Parent index (`models`, `channels`, `tags`) |
+| `GET` | `/data/models/{parentId}/page-{n}.json` | Child videos |
+| `GET` | `/data/version.json` | Sync metadata (if pipeline wrote it) |
+
+Public read; rate-limited. Source: local `output/` (+ SSD cache). Use for local dev or when GitHub CDN is unavailable.
+
+### 3.6 Admin (ops only — not for Flutter app users)
 
 `POST /admin/pipeline` — requires admin key. Not part of consumer Flutter contract.
 
@@ -311,6 +346,7 @@ message <- error.message
 | `URL_PROTOCOL_FORBIDDEN` | 400 | Not http(s) |
 | `URL_LOCALHOST_FORBIDDEN` / `URL_PRIVATE_IP_FORBIDDEN` | 400 | SSRF block |
 | `URL_HOST_NOT_ALLOWED` | 400 | Host not allowlisted |
+| `URL_NOT_CHILD_VIDEO` | 400 | Parent/index URL passed to Detail/Stream |
 | `UNAUTHORIZED` | 401 | Bad/missing API key |
 | `RATE_LIMITED` | 429 | Too many requests |
 | `REQUEST_TIMEOUT` | 408 | Timed out |
@@ -395,10 +431,10 @@ Migration path if adopted later:
 
 | Flutter model | Source | Key fields |
 |---------------|--------|------------|
-| `VideoListItem` | GitHub list item | `title`, `img`, `url`, `id` (derived) |
-| `ParentItem` | index `items` | same + `id` derived |
-| `PagedList` | list document | `page`, `items`, `version`, `updatedAt`, `hasNext` (derived) |
-| `VideoDetail` | `/detail` | `title`, `img`, `description`, `metadata`, `related` |
+| `VideoListItem` | GitHub / `/catalog` list item | `id`, `title`, `img`, `url` |
+| `ParentItem` | index `items` | same + folder `parentId` when opening children |
+| `PagedList` | list document | `page`, `items`, `version`, `updatedAt`, `hasNext` |
+| `VideoDetail` | `/detail` | `id`, `title`, `img`, `description`, `metadata`, `related` |
 | `RelatedItem` | `related[]` | same as `VideoListItem` |
 | `StreamResult` | `/stream` | `streamUrl` ← `stream.url`, `expiresIn` |
 | `ApiError` | error bodies | `code`, `message`, `requestId?` |
@@ -430,16 +466,15 @@ Migration path if adopted later:
 
 - Live Detail response remains a **flat** object (no forced `success/data` wrap in v1)  
 - Live Stream remains `{ success, stream.url, ... }`  
-- GitHub items remain `{ title, img, url }` without mandatory `id`  
-- No Flutter UI code in this phase  
+- Additive fields (`id`, `hasNext`) are non-breaking — old apps may ignore them  
+- No Flutter UI code in this repository  
 
 ---
 
 ## 11. Approval / next steps
 
-If you approve this Contract v1 as official:
+Contract v1 + additive Flutter fields (`id`, `hasNext`, `/catalog` docs) are the live backend target.
 
-1. Keep backend as-is (documentation-only finalize) — **recommended**.  
-2. Or request a **non-breaking** additive patch (e.g. add `hasNext` + `id` into generated JSON; add Detail `success` wrapper behind schemaVersion 2).
-
-Reply with **approve v1 docs-only** or **approve additive schema fields** if you want backend generators/APIs extended.
+1. Point Flutter GitHub CDN base at the synced JSON repo.  
+2. Call `GET /detail` on open; `GET /stream` only on Play.  
+3. Optionally use `/catalog/...` for load-more when CDN pages are incomplete.

@@ -97,9 +97,11 @@ function createAuthMiddleware(mode = 'apiKey') {
 
 const apiKeyAuth = createAuthMiddleware('apiKey');
 const adminAuth = createAuthMiddleware('admin');
+const publicAuth = createAuthMiddleware('public');
 
 module.exports = {
   createAuthMiddleware,
   apiKeyAuth,
   adminAuth,
+  publicAuth,
 };

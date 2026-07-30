@@ -19,7 +19,11 @@ const catalogConfig = Object.freeze({
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
-  includeMyanmarInSchedule: boolEnv('PIPELINE_SCHEDULE_INCLUDE_MYANMAR', false),
+  /** Flutter Myanmar tab — include in cron pipeline after home by default */
+  includeMyanmarInSchedule: boolEnv('PIPELINE_SCHEDULE_INCLUDE_MYANMAR', true),
+  /** Serve Flutter GitHub-path catalog from output/ (GET /data/...) */
+  cdnEnabled: boolEnv('CATALOG_CDN_ENABLED', true),
+  cdnMountPath: (process.env.CATALOG_CDN_MOUNT_PATH || '/data').replace(/\/+$/, '') || '/data',
   /** SSD cache for catalog load-more API */
   ssdCacheDir: process.env.CATALOG_SSD_CACHE_DIR || 'data/cache/catalog',
   ssdCacheTtlMs: Number(process.env.CATALOG_SSD_CACHE_TTL_MS || 8 * 60 * 60 * 1000),

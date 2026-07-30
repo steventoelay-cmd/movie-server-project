@@ -14,6 +14,7 @@ function createXvideosAdapter(options = {}) {
     detailConfig: selectors.detailConfig,
     streamConfig: selectors.streamConfig,
     detailHosts: selectors.detailHosts,
+    childUrlPatterns: selectors.childUrlPatterns,
     headers: selectors.headers,
     ...options,
   });

@@ -89,6 +89,11 @@ module.exports = {
     'Accept-Language': 'en-US,en;q=0.9',
   },
   detailHosts: ['xvideos.com'],
+  // Watch pages only — reject /tags/, /pornstars-index, profiles, etc.
+  childUrlPatterns: [
+    /^\/video\.?[0-9a-z]+(?:\/|$)/i,
+    /^\/embedframe\//i,
+  ],
   sectionConfigs: {
     [SECTIONS.HOME]: {
       baseUrl: env.sites.xvideosHomeUrl,
@@ -183,7 +188,8 @@ module.exports = {
     },
     related: {
       selectors: {
-        item: 'div.thumb-block, div[id^="video_"]',
+        item:
+          '#related-videos div.thumb-block, #video-related div.thumb-block, .related-videos div.thumb-block, div.thumb-block[id^="video-thumb-"], div.thumb-block[id^="video_"]',
         title: 'p.title a, .title a',
         image: 'img',
         url: 'p.title a, .title a',

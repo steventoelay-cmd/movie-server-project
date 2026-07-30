@@ -7,6 +7,7 @@ const { SiteResolver } = require('../../scrapers/core/SiteResolver');
 const { PromiseLock } = require('../../infrastructure/concurrency/PromiseLock');
 const { canonicalizeUrl } = require('../../utils/url.util');
 const { shortHash } = require('../../utils/hash.util');
+const { itemIdFromUrl } = require('../../utils/itemId.util');
 
 const logger = createLogger('detail');
 
@@ -36,7 +37,7 @@ class DetailService {
     if (!check.ok) {
       const err = new Error(check.message);
       err.statusCode = 400;
-      err.code = 'INVALID_DETAIL_URL';
+      err.code = check.code || 'INVALID_DETAIL_URL';
       throw err;
     }
 
@@ -157,8 +158,10 @@ class DetailService {
  * Keeps schemaVersion + extensions for future Flutter compatibility.
  */
 function shapeResponse(detail) {
+  const sourceUrl = detail.extensions?.sourceUrl || '';
   return {
     schemaVersion: detail.schemaVersion || 1,
+    id: detail.id || (sourceUrl ? itemIdFromUrl(sourceUrl) : ''),
     title: detail.title || '',
     img: detail.img || '',
     description: detail.description || '',
@@ -173,6 +176,7 @@ function shapeResponse(detail) {
     },
     related: Array.isArray(detail.related)
       ? detail.related.map((r) => ({
+          id: r.id || itemIdFromUrl(r.url),
           title: r.title,
           img: r.img,
           url: r.url,
