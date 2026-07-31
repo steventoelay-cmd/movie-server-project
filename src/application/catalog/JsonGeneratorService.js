@@ -309,8 +309,8 @@ class JsonGeneratorService {
 
     const parentItems = parents.map((p) =>
       section === SECTIONS.TAG
-        ? { title: p.title, url: p.url }
-        : { title: p.title, img: p.img, url: p.url },
+        ? { id: p.id, title: p.title, url: p.url }
+        : { id: p.id, title: p.title, img: p.img, url: p.url },
     );
     const parentItemsShape = section === SECTIONS.TAG ? 'titleUrl' : 'default';
     const useV2ParentPages = catalogConfig.layout === 'v2';

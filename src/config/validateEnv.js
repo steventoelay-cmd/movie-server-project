@@ -34,6 +34,13 @@ function validateEnv(options = {}) {
     }
   }
 
+  const rawApiKey = process.env.API_KEY || '';
+  if (rawApiKey && /#/.test(rawApiKey) && !/^["']/.test(rawApiKey.trim())) {
+    errors.push(
+      'API_KEY contains "#" — dotenv treats the rest as a comment. Use a hex key or wrap in double quotes.',
+    );
+  }
+
   if (securityConfig.requireAdminKey && !process.env.ADMIN_API_KEY) {
     errors.push('ADMIN_API_KEY is required when REQUIRE_ADMIN_KEY=true');
   }

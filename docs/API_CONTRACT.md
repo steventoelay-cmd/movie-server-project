@@ -178,7 +178,7 @@ REQUIRE_API_KEY=true
 Flutter must use the **same** value at build time:
 
 ```bash
-flutter build apk --dart-define=API_BASE_URL=http://3.27.216.154:3000 --dart-define=API_KEY=<same_hex>
+flutter build apk --dart-define=API_BASE_URL=http://52.64.145.223:3000 --dart-define=API_KEY=<same_hex>
 ```
 
 ### 3.1 Health

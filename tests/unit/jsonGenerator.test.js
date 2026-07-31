@@ -103,7 +103,7 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
       const index = JSON.parse(await fsp.readFile(path.join(tmp, 'tags', 'index.json'), 'utf8'));
       expect(index.items[0].title).toBe('amateur');
       expect(index.items[0].url).toBe('https://www.xvideos.com/tags/amateur');
-      expect(index.items[0].id).toMatch(/^[a-f0-9]{16}$/);
+      expect(index.items[0].id).toBe(parent.id);
       expect(index.items[0]).not.toHaveProperty('img');
     } finally {
       await removeDir(tmp);
@@ -128,6 +128,9 @@ describe('CatalogProcessService + JsonGeneratorService', () => {
       const models = await generator.generateParentChild('model', [parent], children);
       expect(models.files).toContain('models/index.json');
       expect(models.files.some((f) => f.includes('/page-1.json'))).toBe(true);
+      const index = JSON.parse(await fsp.readFile(path.join(tmp, 'models', 'index.json'), 'utf8'));
+      expect(index.items[0].id).toBe(parent.id);
+      expect(models.files).toContain(`models/${parent.id}/page-1.json`);
     } finally {
       await removeDir(tmp);
     }

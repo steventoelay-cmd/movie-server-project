@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { apiKeyAuth } = require('../../middleware/auth');
+const { publicAuth } = require('../../middleware/auth');
 const { detailRateLimit } = require('../../middleware/securityRateLimits');
 const {
   getParentIndex,
@@ -12,15 +12,15 @@ const {
 
 const router = express.Router();
 
-/** Same paths as GitHub raw JSON (Flutter catalogDio). Requires X-Api-Key when API_KEY is set. */
-router.get('/version.json', apiKeyAuth, detailRateLimit, getVersionJson);
-router.get('/:folder/index.json', apiKeyAuth, detailRateLimit, getParentIndex);
+/** Public read (same JSON as GitHub). Detail/stream/catalog API routes still require X-Api-Key. */
+router.get('/version.json', publicAuth, detailRateLimit, getVersionJson);
+router.get('/:folder/index.json', publicAuth, detailRateLimit, getParentIndex);
 router.get(
   '/:folder/:parentId/page-:page.json',
-  apiKeyAuth,
+  publicAuth,
   detailRateLimit,
   getChildPage,
 );
-router.get('/:folder/page-:page.json', apiKeyAuth, detailRateLimit, getFlatPage);
+router.get('/:folder/page-:page.json', publicAuth, detailRateLimit, getFlatPage);
 
 module.exports = router;

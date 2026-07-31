@@ -303,6 +303,7 @@ class SyncOrchestrator {
 
     if (isParentChildSection(section)) {
       const scraped = await this.scrapeService.scrapeParentChild(section);
+      const { parentIdFromItem } = require('../../utils/parentId.util');
       const parentListPages = (scraped.parentBatches || []).map((batch) => {
         const items = this.scrapeService.processor.processItems(batch, {
           section,
@@ -310,8 +311,8 @@ class SyncOrchestrator {
         });
         return items.map((p) =>
           section === SECTIONS.TAG
-            ? { title: p.title, url: p.url }
-            : { title: p.title, img: p.img, url: p.url },
+            ? { id: parentIdFromItem(p), title: p.title, url: p.url }
+            : { id: parentIdFromItem(p), title: p.title, img: p.img, url: p.url },
         );
       });
       const childrenPagesByParentId = new Map();

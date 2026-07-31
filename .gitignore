@@ -1,5 +1,6 @@
 node_modules/
 .env
+env.for-ec2.upload
 logs/*
 !logs/.gitkeep
 coverage/
