@@ -14,14 +14,43 @@ function normalizeSection(raw) {
 }
 
 /**
- * GitHub holds pages 1–3. Live scrape + SSD only for page 4+.
+ * Live scrape when:
+ * - page >= LOADMORE_MIN_PAGE (default 4), or
+ * - explicit live=1 (GET /loadmore always sets this) for any page.
+ *
+ * Myanmar / many model children only publish page-1 (or nothing) to GitHub;
+ * Flutter then calls /loadmore?page=1|2 which must live-scrape.
  */
 function wantsLiveScrape(req, page) {
   const minLive = catalogConfig.loadMoreMinPage || 4;
   const q = String(req.query.live || '').toLowerCase();
   const forceLive = q === '1' || q === 'true' || q === 'yes';
-  if (forceLive && page >= minLive) return true;
+  if (forceLive) return true;
   return page >= minLive;
+}
+
+function isCatalogNotFound(error) {
+  return (
+    error &&
+    (error.code === 'CATALOG_NOT_FOUND' ||
+      error.code === 'NOT_FOUND' ||
+      error.statusCode === 404)
+  );
+}
+
+/**
+ * When output/GitHub JSON is missing but we can scrape, do live scrape.
+ * Covers model children under page-2+ parents that the pipeline never wrote.
+ */
+async function liveFallback(section, page, parentId, parentUrl) {
+  const live = getCatalogLiveScrapeService();
+  if (parentId && isParentChildSection(section) && parentUrl) {
+    return live.scrapeChildPage(section, parentId, page, parentUrl);
+  }
+  if (!parentId && isFlatListSection(section)) {
+    return live.scrapeFlatPage(section, page);
+  }
+  return null;
 }
 
 async function getCatalogPage(req, res, next) {
@@ -41,21 +70,38 @@ async function getCatalogPage(req, res, next) {
       } else if (isFlatListSection(section)) {
         doc = await live.scrapeFlatPage(section, page);
       } else {
+        try {
+          doc = await getCatalogLoadService().getPage({
+            section,
+            page,
+            parentId,
+            parentIndex,
+          });
+        } catch (error) {
+          const fallback = isCatalogNotFound(error)
+            ? await liveFallback(section, page, parentId, parentUrl)
+            : null;
+          if (!fallback) throw error;
+          doc = fallback;
+        }
+      }
+    } else {
+      // Prefer generated JSON; if missing and scrapeable, live-scrape.
+      try {
         doc = await getCatalogLoadService().getPage({
           section,
           page,
           parentId,
           parentIndex,
         });
+      } catch (error) {
+        const fallback =
+          !parentIndex && isCatalogNotFound(error)
+            ? await liveFallback(section, page, parentId, parentUrl)
+            : null;
+        if (!fallback) throw error;
+        doc = fallback;
       }
-    } else {
-      // Pages 1–3: generated JSON from output/ (same files synced to GitHub)
-      doc = await getCatalogLoadService().getPage({
-        section,
-        page,
-        parentId,
-        parentIndex,
-      });
     }
 
     const { _meta, ...body } = doc;
@@ -74,7 +120,10 @@ async function getCatalogPage(req, res, next) {
 
 /**
  * GET /loadmore?section=home&page=4
- * GET /loadmore?section=model&parentId=...&parentUrl=...&page=4
+ * GET /loadmore?section=myanmar&page=2
+ * GET /loadmore?section=model&parentId=...&parentUrl=...&page=1
+ *
+ * Always live-scrapes when possible (SSD cached 8h).
  */
 async function getLoadMore(req, res, next) {
   req.params = req.params || {};
@@ -87,4 +136,4 @@ async function getLoadMore(req, res, next) {
   return getCatalogPage(req, res, next);
 }
 
-module.exports = { getCatalogPage, getLoadMore };
+module.exports = { getCatalogPage, getLoadMore, wantsLiveScrape, liveFallback };

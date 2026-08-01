@@ -286,24 +286,25 @@ Alias: `GET /api/stream?url=`
 Call **only** when user presses Play. Refresh when player fails or near expiry.
 Parent/index URLs are rejected (`URL_NOT_CHILD_VIDEO`).
 
-### 3.4 Catalog: GitHub pages 1–3 + load-more page 4+
+### 3.4 Catalog: GitHub pages + `/loadmore` live scrape
 
 | Surface | Source |
 |---------|--------|
-| Home / Myanmar `page-1..3.json` | **GitHub** (pipeline every 8h) |
-| Model/Channel/Tag parents `page-1..3.json` + `index.json` | **GitHub** |
-| Children `{parentId}/page-1..3.json` | **GitHub** |
-| Page **4+** (scroll load-more) | **Server** SSD cache (8h) → else live scrape one page |
+| Home / Myanmar / parents / children `page-1..3.json` when published | **GitHub** (pipeline) |
+| Scroll load-more when CDN page is missing (e.g. Myanmar only has page-1) | **`GET /loadmore`** → SSD (8h) → else live scrape |
+| Home page **4+** (typical) | **`GET /loadmore`** live scrape |
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/loadmore?section=home&page=4` | Flat load-more (preferred) |
-| `GET` | `/loadmore?section=model&parentId=&parentUrl=&page=4` | Child load-more |
-| `GET` | `/catalog/:section/page/:page` | Same as load-more when `page >= 4` |
+| `GET` | `/loadmore?section=home&page=4` | Flat load-more (always live) |
+| `GET` | `/loadmore?section=myanmar&page=2` | Myanmar when GitHub has no page-2 |
+| `GET` | `/loadmore?section=model&parentId=&parentUrl=&page=2` | Child load-more |
+| `GET` | `/catalog/:section/page/:page` | Live when `page >= LOADMORE_MIN_PAGE` (default 4) or `?live=1` |
 | `GET` | `/catalog/:section/child/:parentId/page/:page?parentUrl=` | Child pages |
 
 Requires `X-Api-Key`. Response matches GitHub list JSON + `meta.source: "live-scrape"`.  
-Headers: `X-Catalog-Source`, `X-Cache: HIT\|MISS`. SSD TTL: `CATALOG_SSD_CACHE_TTL_MS` (default 8h).
+Headers: `X-Catalog-Source`, `X-Cache: HIT\|MISS`. SSD TTL: `CATALOG_SSD_CACHE_TTL_MS` (default 8h).  
+`GET /loadmore` always sets `live=1` and **live-scrapes any page** (not only page ≥ 4).
 
 ### 3.5 Catalog CDN mirror (Flutter `CATALOG_BASE_URL` on the API host)
 

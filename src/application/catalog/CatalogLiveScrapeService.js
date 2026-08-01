@@ -67,7 +67,8 @@ class CatalogLiveScrapeService {
   }
 
   /**
-   * Live scrape one flat list page (home / myanmar). Page 4+.
+   * Live scrape one flat list page (home / myanmar) for GET /loadmore.
+   * Used for any page when CDN JSON is missing (e.g. myanmar page 2+).
    */
   async scrapeFlatPage(section, page) {
     const sec = this.normalizeSection(section);
