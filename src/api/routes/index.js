@@ -6,6 +6,7 @@ const streamRoutes = require('./stream.routes');
 const healthRoutes = require('./health.routes');
 const adminRoutes = require('./admin.routes');
 const catalogRoutes = require('./catalog.routes');
+const loadmoreRoutes = require('./loadmore.routes');
 const catalogCdnRoutes = require('./catalogCdn.routes');
 const { catalogConfig } = require('../../config/catalog.config');
 
@@ -17,6 +18,8 @@ function mountRoutes(app) {
   app.use('/api/stream', streamRoutes);
   app.use('/catalog', catalogRoutes);
   app.use('/api/catalog', catalogRoutes);
+  app.use('/loadmore', loadmoreRoutes);
+  app.use('/api/loadmore', loadmoreRoutes);
   if (catalogConfig.cdnEnabled) {
     const mount = catalogConfig.cdnMountPath;
     app.use(mount, catalogCdnRoutes);

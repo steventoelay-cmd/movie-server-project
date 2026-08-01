@@ -2,7 +2,12 @@
 
 const path = require('path');
 const { pipelineConfig } = require('../../config/pipeline.config');
-const { catalogConfig, catalogPageRelPath, catalogWritePaths } = require('../../config/catalog.config');
+const {
+  catalogConfig,
+  catalogPageRelPath,
+  catalogWritePaths,
+  githubCdnHasNext,
+} = require('../../config/catalog.config');
 const { performanceConfig } = require('../../config/performance.config');
 const { SECTIONS } = require('../../domain/constants/sections');
 const { hashPayload, sanitizeForCompare, hasContentChanged } = require('../../utils/jsonCompare.util');
@@ -211,7 +216,7 @@ class JsonGeneratorService {
         section,
         page,
         items: pages[i],
-        hasNext: i < pages.length - 1,
+        hasNext: githubCdnHasNext(page, pages.length, pages[i].length),
         extraMeta: { kind: 'list' },
       });
       const result = await this.writeDocPaths(relPaths, doc);
@@ -262,7 +267,7 @@ class JsonGeneratorService {
         section,
         page,
         items,
-        hasNext: i < batches.length - 1 && (batches[i + 1]?.length || 0) > 0,
+        hasNext: githubCdnHasNext(page, batches.length, items.length),
         extraMeta: { kind: 'list' },
       });
       const result = await this.writeDocPaths(relPaths, doc);
@@ -365,8 +370,7 @@ class JsonGeneratorService {
         section,
         page,
         items: pageItems,
-        hasNext:
-          i < parentListPages.length - 1 && (parentListPages[i + 1]?.length || 0) > 0,
+        hasNext: githubCdnHasNext(page, parentListPages.length, pageItems.length),
         itemsShape: parentItemsShape,
         extraMeta: { kind: 'parent-list', parentCount: pageItems.length },
       });
@@ -406,8 +410,7 @@ class JsonGeneratorService {
             section,
             page,
             items,
-            hasNext:
-              i < perScrapePages.length - 1 && (perScrapePages[i + 1]?.length || 0) > 0,
+            hasNext: githubCdnHasNext(page, perScrapePages.length, items.length),
             extraMeta: {
               kind: 'children',
               parentId,
@@ -436,7 +439,7 @@ class JsonGeneratorService {
           section,
           page,
           items: pages[i],
-          hasNext: i < pages.length - 1,
+          hasNext: githubCdnHasNext(page, pages.length, pages[i].length),
           extraMeta: {
             kind: 'children',
             parentId,

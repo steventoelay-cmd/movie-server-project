@@ -12,6 +12,8 @@ const pipelineConfig = Object.freeze({
   maxParentPages: env.pipeline.maxParentPages,
   maxChildPages: env.pipeline.maxChildPages,
   maxParentsPerRun: env.pipeline.maxParentsPerRun,
+  githubCdnPages: env.pipeline.githubCdnPages,
+  loadMoreMinPage: env.pipeline.loadMoreMinPage,
   outputDir: path.resolve(rootDir, env.pipeline.outputDir),
   previousDir: path.resolve(rootDir, env.pipeline.previousDir),
   refuseEmptyOverwrite: env.pipeline.refuseEmptyOverwrite,

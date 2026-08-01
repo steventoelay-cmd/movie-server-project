@@ -40,17 +40,28 @@ class CatalogScrapeService {
     const batches = [];
     const pageReports = [];
 
+    // One website page at a time — do not parallelize (1GB VPS).
     for (let page = 1; page <= maxPages; page++) {
       try {
         const result = await scrapePageFn(page);
-        batches.push(result.items || []);
+        const items = result.items || [];
+        batches.push(items);
         pageReports.push({
           page,
           url: result.url,
           totalItems: result.totalItems,
           durationMs: result.durationMs,
         });
-        if (!result.items || result.items.length === 0) {
+        // Drop large scrape payload references before next page
+        result.items = null;
+        if (performanceConfig.clearMemoryAfterPage && global.gc) {
+          try {
+            global.gc();
+          } catch {
+            // ignore
+          }
+        }
+        if (!items.length) {
           break;
         }
       } catch (error) {
@@ -140,7 +151,8 @@ class CatalogScrapeService {
     /** @type {Map<string, Array>} */
     const childrenByParentId = new Map();
     const childReports = [];
-    const parentConcurrency = performanceConfig.parentConcurrency;
+    // Sequential parents (concurrency 1 by default) — one page at a time inside.
+    const parentConcurrency = Math.max(1, performanceConfig.parentConcurrency);
 
     /** @type {Map<string, Array<Array>>} raw child items per scrape page */
     const childrenPageBatchesByParentId = new Map();
@@ -150,14 +162,23 @@ class CatalogScrapeService {
       for (let page = 1; page <= pipelineConfig.maxChildPages; page++) {
         try {
           const result = await this.engine.scrapeChildren(siteId, section, parent.url, { page });
-          childBatches.push(result.items || []);
+          const items = result.items || [];
+          childBatches.push(items);
           childReports.push({
             parentId: parent.id,
             page,
             totalItems: result.totalItems,
             durationMs: result.durationMs,
           });
-          if (!result.items || result.items.length === 0) {
+          result.items = null;
+          if (performanceConfig.clearMemoryAfterPage && global.gc) {
+            try {
+              global.gc();
+            } catch {
+              // ignore
+            }
+          }
+          if (!items.length) {
             break;
           }
         } catch (error) {

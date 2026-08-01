@@ -10,8 +10,11 @@ const performanceConfig = Object.freeze({
   htmlCacheTtlMs: intEnv('HTML_CACHE_TTL_MS', 60 * 1000),
   htmlCacheMaxEntries: intEnv('HTML_CACHE_MAX_ENTRIES', 500),
   sectionConcurrency: intEnv('PIPELINE_SECTION_CONCURRENCY', 1),
-  parentConcurrency: intEnv('PIPELINE_PARENT_CONCURRENCY', 2),
+  /** 1 = one parent at a time (1GB VPS friendly) */
+  parentConcurrency: intEnv('PIPELINE_PARENT_CONCURRENCY', 1),
   sequentialSections: boolEnv('PIPELINE_SEQUENTIAL_SECTIONS', true),
+  /** Hint GC after each scraped page when available */
+  clearMemoryAfterPage: boolEnv('PIPELINE_CLEAR_MEMORY_AFTER_PAGE', true),
   cleanupCron: process.env.CLEANUP_CRON || '0 * * * *',
   cleanupEnabled: boolEnv('CLEANUP_ENABLED', true),
   metricsIntervalMs: intEnv('METRICS_INTERVAL_MS', 60 * 1000),

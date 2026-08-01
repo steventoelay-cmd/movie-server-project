@@ -24,10 +24,28 @@ const catalogConfig = Object.freeze({
   /** Serve Flutter GitHub-path catalog from output/ (GET /data/...) */
   cdnEnabled: boolEnv('CATALOG_CDN_ENABLED', true),
   cdnMountPath: (process.env.CATALOG_CDN_MOUNT_PATH || '/data').replace(/\/+$/, '') || '/data',
-  /** SSD cache for catalog load-more API */
+  /** SSD cache for catalog load-more API (page 4+) */
   ssdCacheDir: process.env.CATALOG_SSD_CACHE_DIR || 'data/cache/catalog',
   ssdCacheTtlMs: Number(process.env.CATALOG_SSD_CACHE_TTL_MS || 8 * 60 * 60 * 1000),
+  /** Pages 1..N published to GitHub; N+1+ is live load-more */
+  githubCdnPages: Number(process.env.GITHUB_CDN_PAGES || pipelineConfig.githubCdnPages || 3),
+  loadMoreMinPage: Number(process.env.LOADMORE_MIN_PAGE || pipelineConfig.loadMoreMinPage || 4),
 });
+
+/**
+ * hasNext for GitHub CDN pages: true on page 3 (when non-empty) so Flutter
+ * continues with server load-more for page 4+.
+ * @param {number} page - 1-based
+ * @param {number} scrapedPageCount - how many non-empty scrape pages exist
+ * @param {number} itemCount - items on this page
+ */
+function githubCdnHasNext(page, scrapedPageCount, itemCount) {
+  if (!itemCount) return false;
+  if (page < scrapedPageCount) return true;
+  // Last scraped page within/at CDN window — more pages go through live API
+  if (page >= catalogConfig.githubCdnPages) return true;
+  return false;
+}
 
 const LEGACY_FOLDERS = Object.freeze({
   home: 'home',
@@ -144,6 +162,7 @@ module.exports = {
   catalogPageRelPath,
   catalogWritePaths,
   resolveScheduledSections,
+  githubCdnHasNext,
   LEGACY_FOLDERS,
   V2_FOLDERS,
 };

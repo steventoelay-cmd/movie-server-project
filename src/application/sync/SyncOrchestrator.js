@@ -291,7 +291,16 @@ class SyncOrchestrator {
 
     if (section === SECTIONS.MYANMAR) {
       const scraped = await this.scrapeService.scrapeMyanmar();
-      const generated = await this.generator.generateMyanmar(scraped.items);
+      const processedBatches = scraped.batches.map((batch) =>
+        this.scrapeService.processor.processItems(batch, {
+          section: SECTIONS.MYANMAR,
+          siteId: scraped.siteId,
+        }),
+      );
+      const generated = await this.generator.generateFlatListFromBatches(
+        SECTIONS.MYANMAR,
+        processedBatches,
+      );
       return {
         skipped: false,
         siteId: scraped.siteId,

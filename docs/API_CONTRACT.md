@@ -286,21 +286,24 @@ Alias: `GET /api/stream?url=`
 Call **only** when user presses Play. Refresh when player fails or near expiry.
 Parent/index URLs are rejected (`URL_NOT_CHILD_VIDEO`).
 
-### 3.4 Catalog load-more (optional — same JSON as GitHub)
+### 3.4 Catalog: GitHub pages 1–3 + load-more page 4+
 
-Use when page 2+ is not yet on CDN, or to read local `output/` behind the API.
+| Surface | Source |
+|---------|--------|
+| Home / Myanmar `page-1..3.json` | **GitHub** (pipeline every 8h) |
+| Model/Channel/Tag parents `page-1..3.json` + `index.json` | **GitHub** |
+| Children `{parentId}/page-1..3.json` | **GitHub** |
+| Page **4+** (scroll load-more) | **Server** SSD cache (8h) → else live scrape one page |
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/catalog/:section/page/:page` | Flat lists (`home`, `myanmar`) |
-| `GET` | `/catalog/:section/parent/:page` | Parent index pages |
-| `GET` | `/catalog/:section/child/:parentId/page/:page` | Children under a parent |
+| `GET` | `/loadmore?section=home&page=4` | Flat load-more (preferred) |
+| `GET` | `/loadmore?section=model&parentId=&parentUrl=&page=4` | Child load-more |
+| `GET` | `/catalog/:section/page/:page` | Same as load-more when `page >= 4` |
+| `GET` | `/catalog/:section/child/:parentId/page/:page?parentUrl=` | Child pages |
 
-Aliases under `/api/catalog/...`. Same auth/rate-limit as Detail.
-
-**Response:** identical list document shape as GitHub JSON (`schemaVersion`, `hasNext`, `items[{id,title,img,url}]`, …). Internal `_meta` is **not** exposed. Header `X-Cache: HIT|MISS` may be set.
-
-Prefer GitHub CDN for page 1 browsing; call `/catalog` only for load-more / fallback.
+Requires `X-Api-Key`. Response matches GitHub list JSON + `meta.source: "live-scrape"`.  
+Headers: `X-Catalog-Source`, `X-Cache: HIT\|MISS`. SSD TTL: `CATALOG_SSD_CACHE_TTL_MS` (default 8h).
 
 ### 3.5 Catalog CDN mirror (Flutter `CATALOG_BASE_URL` on the API host)
 

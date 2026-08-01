@@ -94,8 +94,13 @@ const env = Object.freeze({
     maxHomePages: intEnv('PIPELINE_MAX_HOME_PAGES', 3),
     maxMyanmarPages: intEnv('PIPELINE_MAX_MYANMAR_PAGES', intEnv('PIPELINE_MAX_HOME_PAGES', 3)),
     maxParentPages: intEnv('PIPELINE_MAX_PARENT_PAGES', 3),
-    maxChildPages: intEnv('PIPELINE_MAX_CHILD_PAGES', 2),
+    /** Child pages 1–3 go to GitHub; page 4+ is live load-more */
+    maxChildPages: intEnv('PIPELINE_MAX_CHILD_PAGES', 3),
     maxParentsPerRun: intEnv('PIPELINE_MAX_PARENTS_PER_RUN', 30),
+    /** How many pages are published to GitHub CDN (Home/parents/children) */
+    githubCdnPages: intEnv('GITHUB_CDN_PAGES', 3),
+    /** First page number handled by live load-more API (not GitHub) */
+    loadMoreMinPage: intEnv('LOADMORE_MIN_PAGE', 4),
     outputDir: process.env.OUTPUT_DIR || 'output',
     previousDir: process.env.PREVIOUS_DIR || 'data/previous',
     refuseEmptyOverwrite: boolEnv('PIPELINE_REFUSE_EMPTY_OVERWRITE', true),
