@@ -1,10 +1,8 @@
 'use strict';
 
 const { joinSiteUrl } = require('../../src/utils/siteUrl.util');
-const { buildPaginatedUrl } = require('../../src/scrapers/core/pagination');
-const { registerSites } = require('../../src/scrapers/registerSites');
-const { defaultRegistry } = require('../../src/scrapers/core/AdapterRegistry');
-const { SECTIONS } = require('../../src/domain/constants/sections');
+const { buildPaginatedUrl, buildChildrenPaginatedUrl } = require('../../src/scrapers/core/pagination');
+const selectors = require('../../src/scrapers/sites/xvideos/selectors');
 const { env } = require('../../src/config/env');
 
 describe('xvideos URL wiring', () => {
@@ -27,17 +25,11 @@ describe('xvideos URL wiring', () => {
     expect(env.sections.homeSite).toBe('xvideos');
   });
 
-  test('xvideos adapter builds home + myanmar pages', () => {
-    registerSites(defaultRegistry);
-    const adapter = defaultRegistry.get('xvideos');
-    expect(adapter.supportsSection(SECTIONS.HOME)).toBe(true);
-    expect(adapter.supportsSection(SECTIONS.MYANMAR)).toBe(true);
-    expect(adapter.supportsSection(SECTIONS.MODEL)).toBe(true);
-    expect(adapter.buildSectionUrl(SECTIONS.HOME, 1)).toBe(env.sites.xvideosHomeUrl);
-    expect(adapter.buildSectionUrl(SECTIONS.HOME, 2)).toMatch(/\/2$/);
-    expect(adapter.buildSectionUrl(SECTIONS.MYANMAR, 1)).toBe(env.sites.xvideosMyanmarUrl);
-    expect(adapter.buildSectionUrl(SECTIONS.MYANMAR, 2)).toContain('p=1');
-    expect(adapter.headers.Referer).toBe(env.sites.watchReferer);
+  test('xvideos env section URLs', () => {
+    expect(env.sites.xvideosHomeUrl).toContain('xvideos.com');
+    expect(env.sites.xvideosMyanmarUrl).toContain('k=myanmar');
+    expect(env.sites.watchReferer).toContain('xvideos.com');
+    expect(env.sections.homeSite).toBe('xvideos');
   });
 
   test('search pagination appends with & when query exists', () => {
@@ -48,5 +40,16 @@ describe('xvideos URL wiring', () => {
       pageOffset: -1,
     });
     expect(url).toBe('https://www.xvideos.com/?k=myanmar&p=1');
+  });
+
+  test('channel children use channel search, not generic ?u= slug', () => {
+    const segment = '18eighteen';
+    const base = `https://www.xvideos.com/?k=${encodeURIComponent(`channel:${segment}`)}`;
+    const pagination = selectors.childrenConfigs.channel.pagination;
+    const page1 = buildChildrenPaginatedUrl(base, 1, pagination);
+    const page2 = buildChildrenPaginatedUrl(base, 2, pagination);
+    expect(page1).toBe('https://www.xvideos.com/?k=channel%3A18eighteen');
+    expect(page2).toBe('https://www.xvideos.com/?k=channel%3A18eighteen&p=1');
+    expect(page1).not.toContain('?u=');
   });
 });

@@ -109,7 +109,7 @@ const env = Object.freeze({
   }),
   scheduler: Object.freeze({
     enabled: boolEnv('SCHEDULER_ENABLED', true),
-    cron: process.env.SCHEDULER_CRON || '0 */8 * * *',
+    cron: process.env.SCHEDULER_CRON || '0 0 * * *',
     timezone: process.env.SCHEDULER_TZ || 'UTC',
   }),
   github: Object.freeze({
@@ -123,8 +123,8 @@ const env = Object.freeze({
     retryBaseMs: intEnv('GITHUB_RETRY_BASE_MS', 1500),
   }),
   cache: Object.freeze({
-    detailTtlMs: intEnv('DETAIL_CACHE_TTL_MS', 30 * 60 * 1000),
-    relatedTtlMs: intEnv('RELATED_CACHE_TTL_MS', 8 * 60 * 60 * 1000),
+    detailTtlMs: intEnv('DETAIL_CACHE_TTL_MS', 24 * 60 * 60 * 1000),
+    relatedTtlMs: intEnv('RELATED_CACHE_TTL_MS', 24 * 60 * 60 * 1000),
     streamTtlMs: intEnv('STREAM_CACHE_TTL_MS', 4 * 60 * 1000),
     streamGraceMs: intEnv('STREAM_CACHE_GRACE_MS', 60 * 1000),
     streamRamOnly: boolEnv('STREAM_CACHE_RAM_ONLY', true),

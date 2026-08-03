@@ -57,15 +57,23 @@ const searchPagination = {
 
 /**
  * Channel index links to profile slugs (/javhd) which show related channels, not videos.
- * Video lists live at /?u={slug} with search-style pagination.
+ * `/?u={slug}` returns the same generic list for every slug — ignore it.
+ * Official channel videos: `/?k=channel:{slug}` with search-style `p=` pagination.
  * @param {string} parentUrl
  * @returns {string}
  */
 function channelChildrenBaseUrl(parentUrl) {
   try {
     const u = new URL(parentUrl);
-    if (u.searchParams.has('u') || u.searchParams.get('type') === 'channel') {
+    const existingK = u.searchParams.get('k');
+    if (existingK) {
       return parentUrl;
+    }
+    if (u.searchParams.has('u') || u.searchParams.get('type') === 'channel') {
+      const slug = u.searchParams.get('u') || u.searchParams.get('p') || '';
+      if (slug) {
+        return `${u.origin}/?k=${encodeURIComponent(`channel:${slug}`)}`;
+      }
     }
     const segment = u.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)[0];
     if (!segment) {
@@ -75,7 +83,7 @@ function channelChildrenBaseUrl(parentUrl) {
     if (reserved.has(segment.toLowerCase())) {
       return parentUrl;
     }
-    return `${u.origin}/?u=${encodeURIComponent(segment)}`;
+    return `${u.origin}/?k=${encodeURIComponent(`channel:${segment}`)}`;
   } catch {
     return parentUrl;
   }

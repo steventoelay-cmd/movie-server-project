@@ -24,4 +24,6 @@ If list HTML changes, update selectors only in `src/scrapers/sites/xvideos/selec
 
 ## Channel child videos
 
-The channels index links to profile slugs (e.g. `/aistoryly`). Those pages show **related channels**, not videos. Child scrapes map the parent URL to **`/?u={slug}`** with search-style `p=` pagination before parsing video thumbs.
+The channels index links to profile slugs (e.g. `/aistoryly`). Those pages show **related channels**, not videos. Child scrapes map the parent URL to **`/?k=channel:{slug}`** with search-style `p=` pagination before parsing video thumbs.
+
+Do **not** use `/?u={slug}` — xvideos returns the same generic video list for every slug on that parameter.

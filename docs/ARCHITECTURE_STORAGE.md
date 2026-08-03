@@ -23,16 +23,16 @@ Repo prefix: `GITHUB_BASE_PATH` (e.g. `data/`).
 output/              # Latest generated catalog (source for load-more API)
 data/previous/       # Last promoted snapshot (diff baseline for GitHub upload)
 data/cache/
-  catalog/           # SSD cache for /catalog load-more (8h)
-  related/           # SSD cache for related lists (8h)
+  catalog/           # SSD cache for /catalog load-more (24h)
+  related/           # SSD cache for related lists (24h)
   detail/            # Detail API (RAM + disk, 30m default)
   stream/            # Optional disk when STREAM_CACHE_RAM_ONLY=false
 data/locks/          # Pipeline lock
 ```
 
-## 2. Scraper workflow (every 8 hours)
+## 2. Scraper workflow (once daily)
 
-- Cron: `SCHEDULER_CRON=0 */8 * * *` (default — every 8 hours UTC).
+- Cron: `SCHEDULER_CRON=0 0 * * *` (default — once daily at 00:00 UTC).
 - **Sequential sections** (default): `PIPELINE_SEQUENTIAL_SECTIONS=true`, concurrency `1`.
 - Scheduled order: `PIPELINE_SCHEDULED_SECTIONS=home,model,channel,tag` (myanmar optional via `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true`).
 
@@ -63,9 +63,9 @@ Flutter **page 1**: GitHub raw CDN. **Page 2+**: backend load-more API (below).
 | Data | Store | TTL | Notes |
 |------|--------|-----|--------|
 | Catalog listings (bulk) | GitHub | Until next pipeline | Not loaded entirely into RAM |
-| Load-more pages | SSD `data/cache/catalog` | `CATALOG_SSD_CACHE_TTL_MS` (8h) | Via `CatalogLoadService` |
-| Related videos | SSD `data/cache/related` | `RELATED_CACHE_TTL_MS` (8h) | Written on detail scrape |
-| Video detail | RAM + SSD `data/cache/detail` | 30m default | Existing DetailCache |
+| Load-more pages | SSD `data/cache/catalog` | `CATALOG_SSD_CACHE_TTL_MS` (24h) | Via `CatalogLoadService` |
+| Related videos | SSD `data/cache/related` | `RELATED_CACHE_TTL_MS` (24h) | Written on detail scrape |
+| Video detail | RAM + SSD `data/cache/detail` | 24h default | Existing DetailCache |
 | m3u8 / stream | **RAM only** (default) | `STREAM_CACHE_TTL_MS` (4m) | `STREAM_CACHE_RAM_ONLY=true`, PromiseLock per URL |
 
 ## 5. Load-more API

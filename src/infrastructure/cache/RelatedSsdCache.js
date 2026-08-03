@@ -6,7 +6,7 @@ const { shortHash } = require('../../utils/hash.util');
 const { canonicalizeUrl } = require('../../utils/url.util');
 
 /**
- * SSD cache for related video lists (8h default). Keeps large lists off RAM.
+ * SSD cache for related video lists (24h default). Keeps large lists off RAM.
  */
 class RelatedSsdCache {
   constructor(options = {}) {

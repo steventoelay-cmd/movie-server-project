@@ -66,7 +66,7 @@ Optional `X-Api-Key` when `API_KEY` is set in `.env`:
 | GET | `/data/home/page-1.json`, … | Public (CDN mirror) |
 | GET | `/catalog/...`, `/api/catalog/...` | Optional API key |
 
-Scheduler (default every 8h): `SCHEDULER_CRON=0 */8 * * *` — includes **Myanmar** when `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true` (default).
+Scheduler (default once daily): `SCHEDULER_CRON=0 0 * * *` (00:00 UTC) — includes **Myanmar** when `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true` (default).
 
 ## Docs
 

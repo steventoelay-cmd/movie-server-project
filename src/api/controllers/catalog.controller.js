@@ -123,7 +123,7 @@ async function getCatalogPage(req, res, next) {
  * GET /loadmore?section=myanmar&page=2
  * GET /loadmore?section=model&parentId=...&parentUrl=...&page=1
  *
- * Always live-scrapes when possible (SSD cached 8h).
+ * Always live-scrapes when possible (SSD cached 24h).
  */
 async function getLoadMore(req, res, next) {
   req.params = req.params || {};

@@ -26,7 +26,7 @@ const catalogConfig = Object.freeze({
   cdnMountPath: (process.env.CATALOG_CDN_MOUNT_PATH || '/data').replace(/\/+$/, '') || '/data',
   /** SSD cache for catalog load-more API (page 4+) */
   ssdCacheDir: process.env.CATALOG_SSD_CACHE_DIR || 'data/cache/catalog',
-  ssdCacheTtlMs: Number(process.env.CATALOG_SSD_CACHE_TTL_MS || 8 * 60 * 60 * 1000),
+  ssdCacheTtlMs: Number(process.env.CATALOG_SSD_CACHE_TTL_MS || 24 * 60 * 60 * 1000),
   /** Pages 1..N published to GitHub; N+1+ is live load-more */
   githubCdnPages: Number(process.env.GITHUB_CDN_PAGES || pipelineConfig.githubCdnPages || 3),
   loadMoreMinPage: Number(process.env.LOADMORE_MIN_PAGE || pipelineConfig.loadMoreMinPage || 4),

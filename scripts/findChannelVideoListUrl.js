@@ -24,16 +24,16 @@ async function count(url) {
 async function main() {
   const slug = 'javhd';
   const candidates = [
+    `https://www.xvideos.com/?k=${encodeURIComponent(`channel:${slug}`)}`,
     `https://www.xvideos.com/?k=${slug}`,
-    `https://www.xvideos.com/?k=${encodeURIComponent('channel:' + slug)}`,
-    `https://www.xvideos.com/?k=uploader:${slug}`,
+    `https://www.xvideos.com/?k=${encodeURIComponent('uploader:' + slug)}`,
     `https://www.xvideos.com/profiles/${slug}`,
     `https://www.xvideos.com/profiles/${slug}/videos`,
     `https://www.xvideos.com/channels/${slug}/videos`,
     `https://www.xvideos.com/channels/${slug}/videos/new`,
     `https://www.xvideos.com/${slug}/videos/new/1`,
+    // Broken for channel-specific lists — same generic 48 videos for every slug:
     `https://www.xvideos.com/?u=${slug}`,
-    `https://www.xvideos.com/?type=channel&p=${slug}`,
   ];
   for (const u of candidates) {
     await count(u);

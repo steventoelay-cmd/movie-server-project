@@ -20,7 +20,7 @@ const logger = createLogger('catalog-live');
 
 /**
  * Live website scrape for Flutter load-more (page 4+).
- * Flow: SSD cache (8h) → scrape one page → save SSD → return JSON.
+ * Flow: SSD cache (24h) → scrape one page → save SSD → return JSON.
  * Does not keep list pages in RAM.
  */
 class CatalogLiveScrapeService {

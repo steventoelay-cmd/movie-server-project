@@ -12,7 +12,7 @@ const { createLogger } = require('../../infrastructure/logging/logger');
 const logger = createLogger('catalog-load');
 
 /**
- * Load-more catalog pages from server output/ with SSD cache (8h default).
+ * Load-more catalog pages from server output/ with SSD cache (24h default).
  * Initial page-1 remains on GitHub CDN; Flutter calls this for page 2+.
  */
 class CatalogLoadService {
