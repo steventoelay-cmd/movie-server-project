@@ -4,7 +4,7 @@ Configured via `.env` / `.env.example`:
 
 | Section | Env | Example URL |
 |---------|-----|-------------|
-| Home | `HOME_BASE_URL` + `HOME_LIST_PATH` | `https://www.xvideos.com/best/2026-05` |
+| Home | `HOME_BASE_URL` + `HOME_LIST_PATH` | `.../best/current` → `/best/2026-08` (auto month). Use `/` for homepage or `/new/1` for newest uploads. |
 | Models | `MODELS_*` | `.../pornstars-index` |
 | Tags | `TAGS_*` | `.../tags` |
 | Channels | `CHANNELS_*` | `.../channels-index` |

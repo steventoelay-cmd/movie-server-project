@@ -1,6 +1,6 @@
 'use strict';
 
-const { joinSiteUrl } = require('../../src/utils/siteUrl.util');
+const { joinSiteUrl, resolveHomeListPath, currentBestMonthPath } = require('../../src/utils/siteUrl.util');
 const { buildPaginatedUrl, buildChildrenPaginatedUrl } = require('../../src/scrapers/core/pagination');
 const selectors = require('../../src/scrapers/sites/xvideos/selectors');
 const { env } = require('../../src/config/env');
@@ -16,6 +16,13 @@ describe('xvideos URL wiring', () => {
     expect(joinSiteUrl('https://www.xvideos.com/', 'pornstars-index')).toBe(
       'https://www.xvideos.com/pornstars-index',
     );
+  });
+
+  test('resolveHomeListPath uses current month for /best/current and stale paths', () => {
+    const current = currentBestMonthPath();
+    expect(resolveHomeListPath('/best/current')).toBe(current);
+    expect(resolveHomeListPath('/best/2026-05')).toBe(current);
+    expect(resolveHomeListPath('/best/2026-05', { autoCurrentMonth: false })).toBe('/best/2026-05');
   });
 
   test('env resolves xvideos section URLs', () => {

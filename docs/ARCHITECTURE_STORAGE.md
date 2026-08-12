@@ -34,7 +34,7 @@ data/locks/          # Pipeline lock
 
 - Cron: `SCHEDULER_CRON=0 0 * * *` (default — once daily at 00:00 UTC).
 - **Sequential sections** (default): `PIPELINE_SEQUENTIAL_SECTIONS=true`, concurrency `1`.
-- Scheduled order: `PIPELINE_SCHEDULED_SECTIONS=home,model,channel,tag` (myanmar optional via `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true`).
+- Scheduled order: `PIPELINE_SCHEDULED_SECTIONS=home,model,channel,tag` plus **myanmar** via `MYANMAR_SCHEDULER_CRON` (daily) or `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true`.
 
 Per section:
 
@@ -109,8 +109,8 @@ Flutter → API → CatalogSsdCache hit? → return
    - `PIPELINE_PARENT_CONCURRENCY=2`  
    - `STREAM_CACHE_RAM_ONLY=true`  
 
-5. **Optional myanmar in schedule**  
-   `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true` or manual `npm run pipeline:myanmar`.
+5. **Myanmar daily**  
+   `MYANMAR_SCHEDULER_ENABLED=true`, `MYANMAR_SCHEDULER_CRON=0 0 * * *` (scrape + upload changed `myanmar/page-*.json` only). Or set `PIPELINE_SCHEDULE_INCLUDE_MYANMAR=true` to run myanmar inside the main daily pipeline instead.
 
 ## 8. Backward compatibility
 

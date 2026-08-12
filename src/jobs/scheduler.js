@@ -1,5 +1,6 @@
 'use strict';
 
+const { SECTIONS } = require('../domain/constants/sections');
 const cron = require('node-cron');
 const { schedulerConfig } = require('../config/scheduler.config');
 const { performanceConfig } = require('../config/performance.config');
@@ -23,10 +24,14 @@ class PipelineScheduler {
   constructor(options = {}) {
     this.orchestrator = options.orchestrator || new SyncOrchestrator();
     this.cronExpression = options.cronExpression || schedulerConfig.cron;
+    this.myanmarCronExpression = options.myanmarCronExpression || schedulerConfig.myanmarCron;
+    this.myanmarSchedulerEnabled =
+      options.myanmarSchedulerEnabled ?? schedulerConfig.myanmarEnabled;
     this.cleanupCron = options.cleanupCron || performanceConfig.cleanupCron;
     this.timezone = options.timezone || schedulerConfig.timezone;
     this.forceEnable = options.forceEnable === true;
     this.task = null;
+    this.myanmarTask = null;
     this.cleanupTask = null;
     this.metricsTimer = null;
     this.running = false;
@@ -50,6 +55,22 @@ class PipelineScheduler {
         () => {
           this.trigger('cron').catch((error) => {
             logger.error('Scheduled pipeline crashed', { message: error.message });
+          });
+        },
+        { timezone: this.timezone },
+      );
+    }
+
+    if (
+      this.myanmarSchedulerEnabled &&
+      cron.validate(this.myanmarCronExpression) &&
+      !this.myanmarTask
+    ) {
+      this.myanmarTask = cron.schedule(
+        this.myanmarCronExpression,
+        () => {
+          this.trigger('cron-myanmar', { sections: [SECTIONS.MYANMAR] }).catch((error) => {
+            logger.error('Scheduled myanmar pipeline crashed', { message: error.message });
           });
         },
         { timezone: this.timezone },
@@ -83,6 +104,7 @@ class PipelineScheduler {
 
     logger.info('Scheduler started', {
       cron: this.cronExpression,
+      myanmarCron: this.myanmarSchedulerEnabled ? this.myanmarCronExpression : null,
       cleanupCron: this.cleanupCron,
       timezone: this.timezone,
       memory: getMemoryStats(),
@@ -104,6 +126,10 @@ class PipelineScheduler {
       this.task.stop();
       this.task = null;
     }
+    if (this.myanmarTask) {
+      this.myanmarTask.stop();
+      this.myanmarTask = null;
+    }
     if (this.cleanupTask) {
       this.cleanupTask.stop();
       this.cleanupTask = null;
@@ -120,7 +146,7 @@ class PipelineScheduler {
    * @param {object} [options]
    */
   async trigger(source = 'manual', options = {}) {
-    if (this.cancelled && source === 'cron') {
+    if (this.cancelled && (source === 'cron' || source === 'cron-myanmar')) {
       logger.warn('Skip cron trigger — cancelled', { source });
       return { skipped: true, reason: 'cancelled' };
     }

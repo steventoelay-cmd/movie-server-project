@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 
-const { joinSiteUrl } = require('../utils/siteUrl.util');
+const { joinSiteUrl, resolveHomeListPath } = require('../utils/siteUrl.util');
 
 /**
  * Load and normalize environment configuration.
@@ -37,7 +37,9 @@ function boolEnv(name, fallback = false) {
 
 const xvideosHomeUrl = joinSiteUrl(
   process.env.HOME_BASE_URL || 'https://www.xvideos.com',
-  process.env.HOME_LIST_PATH || '/best/2026-05',
+  resolveHomeListPath(process.env.HOME_LIST_PATH || '/best/current', {
+    autoCurrentMonth: boolEnv('HOME_BEST_AUTO_CURRENT_MONTH', true),
+  }),
 );
 const xvideosModelsUrl = joinSiteUrl(
   process.env.MODELS_BASE_URL || 'https://www.xvideos.com',
@@ -111,6 +113,9 @@ const env = Object.freeze({
     enabled: boolEnv('SCHEDULER_ENABLED', true),
     cron: process.env.SCHEDULER_CRON || '0 0 * * *',
     timezone: process.env.SCHEDULER_TZ || 'UTC',
+    /** Daily myanmar-only run when not included in main PIPELINE_SCHEDULED_SECTIONS */
+    myanmarEnabled: boolEnv('MYANMAR_SCHEDULER_ENABLED', false),
+    myanmarCron: process.env.MYANMAR_SCHEDULER_CRON || '0 0 * * *',
   }),
   github: Object.freeze({
     token: process.env.GITHUB_TOKEN || '',
