@@ -40,7 +40,7 @@
     "pm2:logs": "pm2 logs movies-api",
     "pm2:status": "pm2 status",
     "deploy:health": "bash deploy/scripts/health-check.sh",
-    "worker:deploy": "npx wrangler deploy --config cloudflare/stream-worker/wrangler.toml"
+    "worker:deploy": "npx wrangler deploy"
   },
   "engines": {
     "node": ">=18"

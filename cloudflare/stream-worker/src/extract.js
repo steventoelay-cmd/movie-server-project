@@ -39,10 +39,32 @@ const USER_AGENT =
 
 function cleanExtracted(value) {
   return String(value || '')
-    .replace(/\\u0026/g, '&')
+    .replace(/\\u0026/gi, '&')
+    .replace(/\\u002f/gi, '/')
     .replace(/\\\//g, '/')
     .replace(/&amp;/g, '&')
     .trim();
+}
+
+/**
+ * Watch pages from a datacenter often omit the player. The embed page is smaller
+ * and still contains setVideoHLS.
+ * @param {string} pageUrl
+ * @returns {string|null}
+ */
+function xvideosEmbedUrl(pageUrl) {
+  let url;
+  try {
+    url = new URL(pageUrl);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, '');
+  if (host !== 'xvideos.com' && !host.endsWith('.xvideos.com')) return null;
+  if (/^\/embedframe\//i.test(url.pathname)) return null;
+  const match = url.pathname.match(/^\/video\.?([0-9a-z]+)/i);
+  if (!match) return null;
+  return `${url.protocol}//${url.host}/embedframe/${match[1]}`;
 }
 
 function matchPatterns(html, patterns) {
@@ -281,6 +303,12 @@ async function fetchHtml(fetchImpl, target, referer, timeoutMs) {
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
       Referer: referer || target,
+      'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
+      'sec-fetch-dest': 'document',
+      'sec-fetch-mode': 'navigate',
+      'upgrade-insecure-requests': '1',
     },
   });
   if (!response.ok) {
@@ -312,6 +340,21 @@ async function extractStreamFromPage(pageUrl, options = {}) {
   let referer = currentUrl;
   let html = await fetchHtml(fetchImpl, currentUrl, referer, timeoutMs);
   let parsed = parseStreamHtml(html, currentUrl);
+
+  const embedUrl = xvideosEmbedUrl(check.url.href);
+  if (!parsed.m3u8 && !parsed.mp4 && embedUrl) {
+    try {
+      html = await fetchHtml(fetchImpl, embedUrl, check.url.href, timeoutMs);
+      const embedParsed = parseStreamHtml(html, embedUrl);
+      if (embedParsed.m3u8 || embedParsed.mp4 || embedParsed.iframeSrc) {
+        parsed = embedParsed;
+        currentUrl = embedUrl;
+      }
+    } catch {
+      // Keep the watch-page result and try an iframe below.
+    }
+  }
+
   let depth = 0;
 
   while (!parsed.m3u8 && !parsed.mp4 && parsed.iframeSrc && depth < MAX_IFRAME_DEPTH) {
@@ -340,9 +383,14 @@ async function extractStreamFromPage(pageUrl, options = {}) {
   const candidate = parsed.m3u8 || parsed.mp4;
   const validated = validateStreamUrl(candidate);
   if (!validated.valid) {
-    const error = new Error('No playable stream found on video page');
-    error.code = 'M3U8_NOT_FOUND';
-    error.status = 404;
+    const sawPlayer = String(html || '').includes('setVideoHLS');
+    const error = new Error(
+      sawPlayer
+        ? 'No playable stream found on video page'
+        : 'Video page did not include a player script',
+    );
+    error.code = sawPlayer ? 'M3U8_NOT_FOUND' : 'ORIGIN_BLOCKED';
+    error.status = sawPlayer ? 404 : 502;
     throw error;
   }
   return { url: validated.url, type: validated.type, siteId: check.siteId };

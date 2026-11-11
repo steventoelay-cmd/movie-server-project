@@ -56,6 +56,25 @@ describe('cloudflare stream extract', () => {
     expect(parent.code).toBe('URL_NOT_CHILD_VIDEO');
   });
 
+  test('uses the xvideos embed page when the watch page has no player', async () => {
+    const { extractStreamFromPage } = require('../../cloudflare/stream-worker/src/extract');
+    const calls = [];
+    const fetchImpl = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/embedframe/')) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => `<script>html5player.setVideoHLS('${PLAYLIST}');</script>`,
+        };
+      }
+      return { ok: true, status: 200, text: async () => '<html>no player</html>' };
+    };
+    const extracted = await extractStreamFromPage(PAGE, { fetch: fetchImpl, timeoutMs: 1000 });
+    expect(extracted.url).toBe(PLAYLIST);
+    expect(calls.some((url) => url.includes('/embedframe/omhufvo') || url.includes('/embedframe/'))).toBe(true);
+  });
+
   test('worker returns the playlist JSON', async () => {
     const html = `<script>setVideoHLS("${PLAYLIST}");</script>`;
     const response = await handleWorkerRequest(workerRequest(PAGE), {}, {
