@@ -56,7 +56,7 @@ describe('cloudflare stream extract', () => {
     expect(parent.code).toBe('URL_NOT_CHILD_VIDEO');
   });
 
-  test('uses the xvideos embed page when the watch page has no player', async () => {
+  test('uses the xvideos embed page when the watch page has a player but no playlist', async () => {
     const { extractStreamFromPage } = require('../../cloudflare/stream-worker/src/extract');
     const calls = [];
     const fetchImpl = async (url) => {
@@ -68,11 +68,37 @@ describe('cloudflare stream extract', () => {
           text: async () => `<script>html5player.setVideoHLS('${PLAYLIST}');</script>`,
         };
       }
-      return { ok: true, status: 200, text: async () => '<html>no player</html>' };
+      return { ok: true, status: 200, text: async () => '<html><script>html5player</script></html>' };
     };
     const extracted = await extractStreamFromPage(PAGE, { fetch: fetchImpl, timeoutMs: 1000 });
     expect(extracted.url).toBe(PLAYLIST);
     expect(calls.some((url) => url.includes('/embedframe/omhufvo') || url.includes('/embedframe/'))).toBe(true);
+  });
+
+  test('asks AWS when the video page has no player script', async () => {
+    const calls = [];
+    const fetchImpl = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('api.test/stream')) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ success: true, stream: { url: PLAYLIST, expiresIn: 240, type: 'm3u8' }, meta: {} }),
+        };
+      }
+      return { ok: true, status: 200, text: async () => '<html>no player</html>' };
+    };
+    const response = await handleWorkerRequest(
+      workerRequest(PAGE),
+      { AWS_API_BASE_URL: 'https://api.test' },
+      { fetch: fetchImpl, caches: { default: { match: async () => null, put: async () => {} } } },
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.stream.url).toBe(PLAYLIST);
+    expect(body.meta.source).toBe('aws');
+    expect(calls.some((url) => url.includes('api.test/stream?url='))).toBe(true);
   });
 
   test('worker returns the playlist JSON', async () => {

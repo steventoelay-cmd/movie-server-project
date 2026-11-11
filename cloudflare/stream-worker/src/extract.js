@@ -342,7 +342,8 @@ async function extractStreamFromPage(pageUrl, options = {}) {
   let parsed = parseStreamHtml(html, currentUrl);
 
   const embedUrl = xvideosEmbedUrl(check.url.href);
-  if (!parsed.m3u8 && !parsed.mp4 && embedUrl) {
+  const sawPlayer = String(html || '').includes('setVideoHLS') || String(html || '').includes('html5player');
+  if (!parsed.m3u8 && !parsed.mp4 && embedUrl && sawPlayer) {
     try {
       html = await fetchHtml(fetchImpl, embedUrl, check.url.href, timeoutMs);
       const embedParsed = parseStreamHtml(html, embedUrl);
@@ -383,17 +384,41 @@ async function extractStreamFromPage(pageUrl, options = {}) {
   const candidate = parsed.m3u8 || parsed.mp4;
   const validated = validateStreamUrl(candidate);
   if (!validated.valid) {
-    const sawPlayer = String(html || '').includes('setVideoHLS');
+    const playerInHtml = String(html || '').includes('setVideoHLS');
     const error = new Error(
-      sawPlayer
+      playerInHtml
         ? 'No playable stream found on video page'
         : 'Video page did not include a player script',
     );
-    error.code = sawPlayer ? 'M3U8_NOT_FOUND' : 'ORIGIN_BLOCKED';
-    error.status = sawPlayer ? 404 : 502;
+    error.code = playerInHtml ? 'M3U8_NOT_FOUND' : 'ORIGIN_BLOCKED';
+    error.status = playerInHtml ? 404 : 502;
     throw error;
   }
   return { url: validated.url, type: validated.type, siteId: check.siteId };
+}
+
+async function fetchAwsStream(pageUrl, env, fetchImpl) {
+  const base = String(env.AWS_API_BASE_URL || '').replace(/\/+$/, '');
+  if (!base) return null;
+  const headers = { Accept: 'application/json' };
+  if (env.AWS_API_KEY) headers['X-Api-Key'] = env.AWS_API_KEY;
+  const response = await fetchImpl(`${base}/stream?url=${encodeURIComponent(pageUrl)}`, {
+    method: 'GET',
+    headers,
+    signal: timeoutSignal(15000),
+  });
+  const text = await response.text();
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = null;
+  }
+  if (!body || typeof body !== 'object') {
+    return { status: response.status || 502, body: { success: false, code: 'AWS_STREAM_FAILED', message: 'AWS stream request failed' } };
+  }
+  body.meta = { ...(body.meta || {}), source: 'aws' };
+  return { status: response.status || 200, body };
 }
 
 /**
@@ -459,6 +484,20 @@ async function handleWorkerRequest(request, env = {}, deps = {}) {
     }
     return response;
   } catch (error) {
+    if (error.code === 'ORIGIN_BLOCKED' || error.code === 'M3U8_NOT_FOUND') {
+      try {
+        const aws = await fetchAwsStream(check.url.href, env, deps.fetch || fetch);
+        if (aws) {
+          return jsonResponse(aws.status, aws.body, { ...cors, 'x-cache': 'MISS' });
+        }
+      } catch (awsError) {
+        return jsonResponse(
+          502,
+          { success: false, code: 'AWS_STREAM_FAILED', message: awsError.message || 'AWS stream request failed' },
+          cors,
+        );
+      }
+    }
     const status = error.status || 502;
     return jsonResponse(
       status,

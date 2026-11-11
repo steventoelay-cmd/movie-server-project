@@ -6,3 +6,6 @@ compatibility_date = "2024-11-01"
 [vars]
 ALLOW_ORIGIN = "*"
 PAGE_TIMEOUT_MS = "8000"
+# Used only when xvideos does not return a player script to the Worker.
+# Set the key with: npx wrangler secret put AWS_API_KEY
+AWS_API_BASE_URL = "https://api.mhd-api.xyz"
