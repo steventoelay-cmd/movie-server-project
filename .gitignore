@@ -12,4 +12,3 @@ output/
 .DS_Store
 Thumbs.db
 .env.example
-.wrangler/

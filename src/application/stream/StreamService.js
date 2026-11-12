@@ -30,9 +30,11 @@ class StreamService {
 
   /**
    * @param {string} url - child video page URL
+   * @param {{ bypassCache?: boolean }} [options]
    * @returns {Promise<object>} API response body
    */
-  async getStream(url) {
+  async getStream(url, options = {}) {
+    const bypassCache = options.bypassCache === true;
     const started = Date.now();
     const check = this.resolver.validateChildUrl(url);
     if (!check.ok) {
@@ -46,7 +48,7 @@ class StreamService {
     const lockKey = `stream:${shortHash(canonical)}`;
 
     return this.lock.run(lockKey, async () => {
-      const cached = await this.cache.get(canonical);
+      const cached = bypassCache ? { hit: false } : await this.cache.get(canonical);
       if (cached.hit && !cached.stale && cached.entry?.m3u8) {
         const validation = validateStreamUrl(cached.entry.m3u8, {
           requireM3u8: (cached.entry.type || 'm3u8') !== 'mp4',
@@ -139,7 +141,7 @@ class StreamService {
           durationMs: Date.now() - started,
         });
 
-        if (this.config.allowStaleOnFailure) {
+        if (!bypassCache && this.config.allowStaleOnFailure) {
           const stale = await this.cache.get(canonical, { allowStale: true });
           if (stale.hit && stale.entry?.m3u8) {
             const validation = validateStreamUrl(stale.entry.m3u8, {

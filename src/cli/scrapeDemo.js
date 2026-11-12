@@ -4,14 +4,14 @@
  * Optional manual smoke CLI for the scraper engine.
  * Usage:
  *   node src/cli/scrapeDemo.js
- *   node src/cli/scrapeDemo.js --site=tubev --section=home --page=1
+ *   node src/cli/scrapeDemo.js --site=xvideos --section=home --page=1
  *   node src/cli/scrapeDemo.js --dry-run
  */
 
 const { createScraperEngine, SECTIONS } = require('../scrapers');
 
 function parseArgs(argv) {
-  const out = { site: 'tubev', section: SECTIONS.HOME, page: 1, dryRun: false, parentUrl: '' };
+  const out = { site: 'xvideos', section: SECTIONS.HOME, page: 1, dryRun: false, parentUrl: '' };
   for (const arg of argv) {
     if (arg === '--dry-run') {
       out.dryRun = true;

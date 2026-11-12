@@ -1,0 +1,3 @@
+# Install: sudo crontab -u movies deploy/cron/movies-catalog.cron
+# Catalog scrape at 00:00 UTC. The API process does not run this job.
+0 0 * * * /opt/movies-server/deploy/scripts/run-catalog.sh >> /opt/movies-server/logs/pipeline.log 2>&1

@@ -3,8 +3,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { parseList } = require('../src/scrapers/parsers/parseList');
-const { SECTIONS } = require('../src/domain/constants/sections');
-const tubev = require('../src/scrapers/sites/tubev/selectors');
 const xv = require('../src/scrapers/sites/xvideos/selectors');
 
 const UA =
@@ -62,21 +60,8 @@ async function inspectXvideosRelated() {
   }
 }
 
-async function inspectTubev() {
-  console.log('\n=== tubev list ===');
-  const res = await axios.get('https://www.tubev.sex/videos', {
-    headers: { 'User-Agent': UA },
-    timeout: 25000,
-  });
-  const html = res.data;
-  console.log('bytes', html.length);
-  const items = parseList(html, tubev.sectionConfigs[SECTIONS.HOME], 'https://www.tubev.sex/videos');
-  console.log('home list items', items.length, items[0]);
-}
-
 async function main() {
   await inspectXvideosRelated();
-  await inspectTubev();
 }
 
 main().catch((e) => console.error(e.message));

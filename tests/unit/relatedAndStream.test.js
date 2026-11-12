@@ -4,7 +4,7 @@ const { parseXvideosVideoRelated } = require('../../src/scrapers/parsers/parseRe
 const { parseDetail } = require('../../src/scrapers/parsers/parseDetail');
 const { parseStream } = require('../../src/scrapers/parsers/parseStream');
 const { validateStreamUrl } = require('../../src/utils/stream.validator');
-const tubev = require('../../src/scrapers/sites/tubev/selectors');
+const xv = require('../../src/scrapers/sites/xvideos/selectors');
 
 describe('parseXvideosVideoRelated', () => {
   test('extracts related from video_related script', () => {
@@ -24,7 +24,7 @@ describe('parseXvideosVideoRelated', () => {
     const html = `<html><head><meta property="og:title" content="Main Video"/></head><body>
       <script>var video_related=[{"u":"/video.abc/rel_one","tf":"Rel One","i":"https://cdn.example.com/r.jpg"}];</script>
     </body></html>`;
-    const raw = parseDetail(html, tubev.detailConfig, 'https://www.xvideos.com/video.abc/main');
+    const raw = parseDetail(html, xv.detailConfig, 'https://www.xvideos.com/video.abc/main');
     expect(raw.related).toHaveLength(1);
     expect(raw.related[0].title).toBe('Rel One');
   });
@@ -33,7 +33,7 @@ describe('parseXvideosVideoRelated', () => {
 describe('mp4 stream extraction', () => {
   test('parseStream returns mp4 when page has no m3u8', () => {
     const html = `<html><body><video src="https://vcdn.example.com/play.mp4?token=abc"></video></body></html>`;
-    const parsed = parseStream(html, tubev.streamConfig, 'https://www.tubev.sex/video/1/a');
+    const parsed = parseStream(html, xv.streamConfig, 'https://www.xvideos.com/video.abc/sample');
     expect(parsed.m3u8).toBeNull();
     expect(parsed.mp4).toContain('.mp4');
     expect(validateStreamUrl(parsed.mp4, { requireM3u8: false }).valid).toBe(true);

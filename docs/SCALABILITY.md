@@ -20,7 +20,7 @@ Flutter App
                     ┌─────────────────┼─────────────────┐
                     ▼                 ▼                 ▼
               Site adapters     Memory+File cache   node-cron jobs
-              (tubev/sexvid)    (Detail/Stream/HTML)  (pipeline/cleanup)
+              (xvideos)         (Detail/Stream/HTML)  (pipeline/cleanup)
 ```
 
 | Concern | Today |

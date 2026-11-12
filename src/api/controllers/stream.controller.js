@@ -12,7 +12,8 @@ const streamService = new StreamService();
 async function getStream(req, res, next) {
   try {
     const url = String(req.validatedUrl || req.query.url || '').trim();
-    const result = await streamService.getStream(url);
+    const fresh = req.query.fresh === '1' || req.query.fresh === 'true';
+    const result = await streamService.getStream(url, { bypassCache: fresh });
 
     res.setHeader('X-Cache', result.cache?.hit ? (result.cache.stale ? 'STALE' : 'HIT') : 'MISS');
     if (result.meta?.durationMs != null) {

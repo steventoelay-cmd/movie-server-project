@@ -57,7 +57,7 @@ async function run() {
   assert.strictEqual(attempts, 2);
 
   const engine = createScraperEngine();
-  assert.deepStrictEqual(engine.listSites().sort(), ['sexvid', 'tubev']);
+  assert.deepStrictEqual(engine.listSites().sort(), ['xvideos']);
   assert.ok(Object.values(SECTIONS).includes('home'));
 
   process.stdout.write('offline scraper checks passed\n');

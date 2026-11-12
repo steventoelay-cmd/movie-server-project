@@ -71,10 +71,6 @@ const env = Object.freeze({
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   userAgentPool: listEnv('USER_AGENT_POOL'),
   sites: Object.freeze({
-    // Legacy adapters (still registered)
-    tubevHomeUrl: process.env.TUBEV_HOME_URL || 'https://www.tubev.sex/videos',
-    tubevChannelUrl: process.env.TUBEV_CHANNEL_URL || 'https://www.tubev.sex/channels',
-    sexvidModelUrl: process.env.SEXVID_MODEL_URL || 'https://www.sexvid.xxx/pornstars/',
     // Primary xvideos catalog URLs
     xvideosHomeUrl,
     xvideosModelsUrl,
@@ -130,7 +126,8 @@ const env = Object.freeze({
   cache: Object.freeze({
     detailTtlMs: intEnv('DETAIL_CACHE_TTL_MS', 24 * 60 * 60 * 1000),
     relatedTtlMs: intEnv('RELATED_CACHE_TTL_MS', 24 * 60 * 60 * 1000),
-    streamTtlMs: intEnv('STREAM_CACHE_TTL_MS', 4 * 60 * 1000),
+    /** Keep a playlist until playback fails. Player sends fresh=1 to replace a dead URL. */
+    streamTtlMs: intEnv('STREAM_CACHE_TTL_MS', 6 * 60 * 60 * 1000),
     streamGraceMs: intEnv('STREAM_CACHE_GRACE_MS', 60 * 1000),
     streamRamOnly: boolEnv('STREAM_CACHE_RAM_ONLY', true),
     detailDir: process.env.DETAIL_CACHE_DIR || 'data/cache/detail',

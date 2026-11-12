@@ -3,7 +3,6 @@
 const axios = require('axios');
 const { parseDetail } = require('../src/scrapers/parsers/parseDetail');
 const { parseStream } = require('../src/scrapers/parsers/parseStream');
-const tubev = require('../src/scrapers/sites/tubev/selectors');
 const xv = require('../src/scrapers/sites/xvideos/selectors');
 
 const UA =
@@ -55,12 +54,6 @@ async function main() {
     });
   } catch (e) {
     console.error('xvideos error:', e.message);
-  }
-
-  try {
-    await probeSite('tubev', 'https://www.tubev.sex/videos', tubev);
-  } catch (e) {
-    console.error('tubev error:', e.message);
   }
 }
 

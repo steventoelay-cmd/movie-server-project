@@ -1,8 +1,6 @@
 'use strict';
 
 const { defaultRegistry } = require('./core/AdapterRegistry');
-const { createTubevAdapter } = require('./sites/tubev');
-const { createSexvidAdapter } = require('./sites/sexvid');
 const { createXvideosAdapter } = require('./sites/xvideos');
 
 let registered = false;
@@ -20,12 +18,6 @@ function registerSites(registry = defaultRegistry) {
 
   if (!registry.has('xvideos')) {
     registry.register(createXvideosAdapter());
-  }
-  if (!registry.has('tubev')) {
-    registry.register(createTubevAdapter());
-  }
-  if (!registry.has('sexvid')) {
-    registry.register(createSexvidAdapter());
   }
 
   if (registry === defaultRegistry) {

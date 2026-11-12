@@ -39,8 +39,7 @@
     "pm2:stop": "pm2 stop movies-api",
     "pm2:logs": "pm2 logs movies-api",
     "pm2:status": "pm2 status",
-    "deploy:health": "bash deploy/scripts/health-check.sh",
-    "worker:deploy": "npx wrangler deploy"
+    "deploy:health": "bash deploy/scripts/health-check.sh"
   },
   "engines": {
     "node": ">=18"

@@ -56,7 +56,7 @@ module.exports = {
         // Bind localhost only — Nginx terminates TLS and proxies here
         HOST: '127.0.0.1',
         PORT: 3000,
-        START_SCHEDULER_WITH_SERVER: 'true',
+        START_SCHEDULER_WITH_SERVER: 'false',
         HEALTH_EXPOSE_METRICS: 'false',
         REQUIRE_API_KEY: 'true',
         LOG_LEVEL: 'info',

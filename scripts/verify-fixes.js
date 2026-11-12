@@ -5,10 +5,7 @@ const { parseDetail } = require('../src/scrapers/parsers/parseDetail');
 const { parseStream } = require('../src/scrapers/parsers/parseStream');
 const { normalizeDetail } = require('../src/scrapers/normalizers/detail.normalizer');
 const { validateStreamUrl } = require('../src/utils/stream.validator');
-const tubev = require('../src/scrapers/sites/tubev/selectors');
 const xv = require('../src/scrapers/sites/xvideos/selectors');
-const { SECTIONS } = require('../src/domain/constants/sections');
-const { parseList } = require('../src/scrapers/parsers/parseList');
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -41,13 +38,6 @@ async function main() {
   const xvMatch = xvList.data.match(/href="(\/video[^"]+)"/i);
   const xvUrl = new URL(xvMatch[1], 'https://www.xvideos.com').href;
   await verify('xvideos', xvUrl, xv, { Referer: 'https://www.xvideos.com/' });
-
-  const tbList = await axios.get('https://www.tubev.sex/videos', {
-    headers: { 'User-Agent': UA },
-    timeout: 25000,
-  });
-  const tbItems = parseList(tbList.data, tubev.sectionConfigs[SECTIONS.HOME], 'https://www.tubev.sex/videos');
-  await verify('tubev', tbItems[0].url, tubev, { Referer: 'https://www.tubev.sex/videos' });
 }
 
 main().catch((e) => {
